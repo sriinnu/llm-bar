@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- LocalModelsBar mark: a chip with three asymmetric "sources" feeding in (lcp / ollama / hf) -->
+  <defs>
+    <linearGradient id="chipFill" x1="7" y1="7" x2="17" y2="17" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C6CFF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="7" y="7" width="10" height="10" rx="2.4" fill="url(#chipFill)"/>
+  <circle cx="12" cy="12" r="2" fill="none" stroke="white" stroke-opacity="0.85" stroke-width="1"/>
+
+  <!-- top pins -->
+  <line x1="9.5" y1="7" x2="9.5" y2="3.2" stroke="#7C6CFF" stroke-width="1.6" stroke-linecap="round"/>
+  <line x1="14.5" y1="7" x2="14.5" y2="3.2" stroke="#22D3EE" stroke-width="1.6" stroke-linecap="round"/>
+
+  <!-- bottom pins -->
+  <line x1="9.5" y1="17" x2="9.5" y2="20.8" stroke="#7C6CFF" stroke-width="1.6" stroke-linecap="round"/>
+  <line x1="14.5" y1="17" x2="14.5" y2="20.8" stroke="#22D3EE" stroke-width="1.6" stroke-linecap="round"/>
+
+  <!-- left pin -->
+  <line x1="7" y1="12" x2="3.2" y2="12" stroke="#7C6CFF" stroke-width="1.6" stroke-linecap="round"/>
+
+  <!-- right pin -->
+  <line x1="17" y1="12" x2="20.8" y2="12" stroke="#22D3EE" stroke-width="1.6" stroke-linecap="round"/>
+</svg>
