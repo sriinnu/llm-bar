@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C6CFF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- macOS-style rounded-square base, matches the system icon mask convention -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="url(#bg)"/>
+
+  <!-- Chip + pins glyph, scaled up and centered, white for contrast against the gradient -->
+  <g transform="translate(512 512)">
+    <rect x="-155" y="-155" width="310" height="310" rx="62" fill="none" stroke="white" stroke-width="34"/>
+    <circle cx="0" cy="0" r="58" fill="none" stroke="white" stroke-opacity="0.9" stroke-width="26"/>
+
+    <!-- top pins -->
+    <line x1="-72" y1="-155" x2="-72" y2="-268" stroke="white" stroke-width="34" stroke-linecap="round"/>
+    <line x1="72" y1="-155" x2="72" y2="-268" stroke="white" stroke-width="34" stroke-linecap="round"/>
+
+    <!-- bottom pins -->
+    <line x1="-72" y1="155" x2="-72" y2="268" stroke="white" stroke-width="34" stroke-linecap="round"/>
+    <line x1="72" y1="155" x2="72" y2="268" stroke="white" stroke-width="34" stroke-linecap="round"/>
+
+    <!-- left / right pins -->
+    <line x1="-155" y1="0" x2="-268" y2="0" stroke="white" stroke-width="34" stroke-linecap="round"/>
+    <line x1="155" y1="0" x2="268" y2="0" stroke="white" stroke-width="34" stroke-linecap="round"/>
+  </g>
+</svg>

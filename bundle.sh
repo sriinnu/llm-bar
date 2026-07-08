@@ -96,6 +96,18 @@ if [[ -f "branding/icon.svg" ]]; then
     echo "==> Bundled icon.svg into Contents/Resources"
 fi
 
+# ─── 3c. Copy the actual app icon (Finder/Dock/Spotlight) ────────────────
+# This is distinct from icon.svg above, which is only the small menu-bar
+# glyph drawn at runtime. Without an .icns + CFBundleIconFile/IconName in
+# Info.plist, the app has no real identity — Finder/Spotlight show the
+# generic blank-document placeholder instead.
+if [[ -f "branding/AppIcon.icns" ]]; then
+    cp "branding/AppIcon.icns" "${RESOURCES_DIR}/AppIcon.icns"
+    echo "==> Bundled AppIcon.icns"
+else
+    echo "WARNING: branding/AppIcon.icns missing — app will have no Finder/Dock icon"
+fi
+
 # ─── 4. Copy Sparkle.framework if it was built ──────────────────────────
 SPARKLE_XC=".build/artifacts/sparkle/Sparkle/Sparkle.xcframework"
 if [[ -d "${SPARKLE_XC}" ]]; then
@@ -145,6 +157,10 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <string>${APP_NAME}</string>
     <key>CFBundleDisplayName</key>
     <string>Sakshi</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
