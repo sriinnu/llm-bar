@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>SakshiBar</title>
+        <link>https://github.com/sriinnu/local-models-bar</link>
+        <description>Auto-update feed for SakshiBar.app</description>
+        <language>en</language>
+        <item>
+            <title>SakshiBar 0.1.0</title>
+            <pubDate>Wed, 08 Jul 2026 13:01:44 +0000</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description>&lt;p&gt;See release notes on GitHub.&lt;/p&gt;</description>
+            <enclosure url="https://github.com/sriinnu/local-models-bar/releases/download/v0.1.0/SakshiBar-0.1.0.zip" length="1178650" type="application/octet-stream" sparkle:edSignature="bYw4uKZl8fKUHhLxfqSVtoqBV5rGyATanLr4r1Z/hfrwnCC7K1Ouvo+FJIUP+NyV8fRiWMUvhhfVEbJwW7o4Aw==" />
+        </item>
+    </channel>
+</rss>

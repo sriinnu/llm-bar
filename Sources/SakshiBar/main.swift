@@ -1,6 +1,7 @@
 import AppKit
 import Darwin
 import Foundation
+import Sparkle
 
 // Every path below can be overridden via env var (e.g. in the launchd plist or
 // a wrapper script) so this isn't tied to one machine's folder layout.
@@ -155,9 +156,22 @@ func hfCacheModels() -> [ModelEntry] {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
+    // Sparkle: startingUpdater true polls on launch + every 24h per Info.plist's
+    // SUScheduledCheckInterval. updaterDelegate/userDriverDelegate nil = defaults.
+    let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true,
+        updaterDelegate: nil,
+        userDriverDelegate: nil
+    )
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let button = statusItem.button {
-            let icon = Bundle.module.url(forResource: "icon", withExtension: "svg")
+            // Bundle.main finds Contents/Resources/icon.svg in the packaged .app
+            // (bundle.sh copies it there). Bundle.module is the SPM-resource-bundle
+            // fallback for `swift run` during development, where there's no
+            // Contents/Resources — only used when Bundle.main comes up empty.
+            let icon = (Bundle.main.url(forResource: "icon", withExtension: "svg")
+                ?? Bundle.module.url(forResource: "icon", withExtension: "svg"))
                 .flatMap { NSImage(contentsOf: $0) }
                 ?? NSImage(systemSymbolName: "cpu", accessibilityDescription: "Local Models")
             icon?.isTemplate = false  // keep the gradient — don't let the menu bar flatten it to monochrome
@@ -189,8 +203,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         appendModels(hf, to: menu, emptyText: "Cache empty — this setup downloads straight into project folders")
 
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit LocalModelsBar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let checkForUpdates = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates(_:)), keyEquivalent: "")
+        checkForUpdates.target = self
+        checkForUpdates.isEnabled = updaterController.updater.canCheckForUpdates
+        menu.addItem(checkForUpdates)
+
+        let quit = NSMenuItem(title: "Quit SakshiBar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
+    }
+
+    @objc func checkForUpdates(_ sender: NSMenuItem) {
+        updaterController.checkForUpdates(nil)
     }
 
     func appendModels(_ models: [ModelEntry], to menu: NSMenu, emptyText: String) {

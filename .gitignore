@@ -1,3 +1,8 @@
 .build/
-LocalModelsBar.app/
+SakshiBar.app/
+SakshiBar-*.zip
 .DS_Store
+sparkle_ed25519_priv
+*.p8
+generate_keys.out
+.env

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        Hardened runtime entitlements for SakshiBar.
+        Required by Apple notarization (notarytool rejects apps without
+        the hardened runtime). Each capability below has a clear reason:
+    -->
+
+    <!--
+        Outgoing network access — required to query Ollama's local API
+        (127.0.0.1:11434) AND to fetch the Sparkle appcast.xml + update zips.
+    -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+
+    <!--
+        Sparkle 2 needs JIT for its update installer XPC service.
+        Without this, Sparkle's installer fails on hardened-runtime builds.
+    -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+
+    <!--
+        Sparkle's installer needs to use library validation exceptions
+        when loading the helper from inside the app bundle.
+    -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
+    <!--
+        Sandbox is intentionally OFF. SakshiBar reads GGUF/model files
+        and pidfiles from arbitrary local paths (llama.cpp models dir,
+        Hugging Face cache) and spawns Sparkle's installer XPC services.
+        For a self-distributed menubar tool this is fine.
+    -->
+</dict>
+</plist>
