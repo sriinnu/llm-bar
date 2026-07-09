@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#0E9BB4"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="40" height="40" rx="10" fill="url(#g)"/>
+  <!-- stacked layers: three model "slabs" -->
+  <g transform="translate(20 20)">
+    <rect x="-9" y="-8.5" width="18" height="5.5" rx="2" fill="white" opacity="0.55"/>
+    <rect x="-9" y="-1.5" width="18" height="5.5" rx="2" fill="white" opacity="0.78"/>
+    <rect x="-9" y="5.5" width="18" height="5.5" rx="2" fill="white"/>
+  </g>
+</svg>

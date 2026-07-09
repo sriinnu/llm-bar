@@ -6,6 +6,24 @@
         <description>Auto-update feed for SakshiBar.app</description>
         <language>en</language>
         <item>
+            <title>SakshiBar 0.2.0</title>
+            <pubDate>Thu, 09 Jul 2026 09:41:14 +0000</pubDate>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description>&lt;p&gt;See release notes on GitHub.&lt;/p&gt;</description>
+            <enclosure url="https://github.com/sriinnu/local-models-bar/releases/download/v0.2.0/SakshiBar-0.2.0.zip" length="2647772" type="application/octet-stream" sparkle:edSignature="b5ChbAp7YdhYwM6Nhy8lzomxBZeat9DNqPc+8OdYKIoOgKq1VhzlEa/K6TCfca2UlGi7qOOR2RO0UmjXbGtWDQ==" />
+        </item>
+        <item>
+            <title>SakshiBar 0.2.0</title>
+            <pubDate>Thu, 09 Jul 2026 09:36:28 +0000</pubDate>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description>&lt;p&gt;See release notes on GitHub.&lt;/p&gt;</description>
+            <enclosure url="https://github.com/sriinnu/local-models-bar/releases/download/v0.2.0/SakshiBar-0.2.0.zip" length="2646687" type="application/octet-stream" sparkle:edSignature="Hjvwkb4/e0PbCB4leE0aoc4R/BQ7bfkLwH1UzcGW/1caDXWl2vQmzCy3OSV6d4ubn2j2tb8yij2O3gZE9lfSBQ==" />
+        </item>
+        <item>
             <title>SakshiBar 0.1.1</title>
             <pubDate>Wed, 08 Jul 2026 16:02:24 +0000</pubDate>
             <sparkle:version>2</sparkle:version>

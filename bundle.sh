@@ -96,6 +96,14 @@ if [[ -f "branding/icon.svg" ]]; then
     echo "==> Bundled icon.svg into Contents/Resources"
 fi
 
+# Section badge glyphs (popover UI) — same reasoning as icon.svg above.
+for badge in badge-lcp badge-ollama badge-hf; do
+    if [[ -f "branding/${badge}.svg" ]]; then
+        cp "branding/${badge}.svg" "${RESOURCES_DIR}/${badge}.svg"
+    fi
+done
+echo "==> Bundled section badges into Contents/Resources"
+
 # ─── 3c. Copy the actual app icon (Finder/Dock/Spotlight) ────────────────
 # This is distinct from icon.svg above, which is only the small menu-bar
 # glyph drawn at runtime. Without an .icns + CFBundleIconFile/IconName in

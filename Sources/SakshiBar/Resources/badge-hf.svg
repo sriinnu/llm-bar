@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="40" height="40" rx="10" fill="url(#g)"/>
+  <!-- cache folder: a simple folder glyph -->
+  <g transform="translate(20 21)">
+    <path d="M -9 -6 L -3 -6 L -1 -4 L 9 -4 L 9 7 C 9 8.1 8.1 9 7 9 L -9 9 C -10.1 9 -11 8.1 -11 7 L -11 -4 C -11 -5.1 -10.1 -6 -9 -6 Z"
+          fill="white" opacity="0.95"/>
+  </g>
+</svg>

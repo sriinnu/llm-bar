@@ -34,7 +34,7 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "Sources/SakshiBar",
-            resources: [.copy("Resources/icon.svg")]
+            resources: [.copy("Resources")]
         )
     ]
 )
