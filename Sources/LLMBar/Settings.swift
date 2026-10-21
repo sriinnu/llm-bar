@@ -30,7 +30,22 @@ final class AppSettings: ObservableObject {
     func string(_ k: Key) -> String {
         if let e = ProcessInfo.processInfo.environment[k.env], !e.isEmpty { return e }
         if let v = d.string(forKey: k.name), !v.isEmpty { return v }
+        if k.name == Self.lcpDir.name, let fromConfig = Self.lcpDirFromConfig() { return fromConfig }
         return k.fallback
+    }
+
+    /// The `lcp` shell function keeps its models dir in claude_config.zsh as
+    /// `_LCP_MODELS_DIR="${LCP_MODELS_DIR:-$HOME/Models/gguf}"`. Reuse it so the app and the CLI
+    /// agree without the user configuring the same path twice.
+    static func lcpDirFromConfig() -> String? {
+        let cfg = AppSettings.shared.string(AppSettings.claudeConfig)
+        guard let text = try? String(contentsOfFile: cfg, encoding: .utf8) else { return nil }
+        let re = try! NSRegularExpression(pattern: #"_LCP_MODELS_DIR="\$\{LCP_MODELS_DIR:-([^}"]+)\}""#)
+        let r = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let m = re.firstMatch(in: text, range: r), let g = Range(m.range(at: 1), in: text) else { return nil }
+        let raw = String(text[g])
+        let expanded = raw.replacingOccurrences(of: "$HOME", with: NSHomeDirectory()).replacingOccurrences(of: "${HOME}", with: NSHomeDirectory())
+        return expanded.hasPrefix("~") ? NSHomeDirectory() + expanded.dropFirst() : expanded
     }
     func isEnvOverridden(_ k: Key) -> Bool {
         !(ProcessInfo.processInfo.environment[k.env] ?? "").isEmpty
@@ -47,6 +62,11 @@ final class AppSettings: ObservableObject {
     var showFree: Bool  { get { d.object(forKey: "showFree")  as? Bool ?? true } set { objectWillChange.send(); d.set(newValue, forKey: "showFree") } }
     var showPricing: Bool { get { d.object(forKey: "showPricing") as? Bool ?? true } set { objectWillChange.send(); d.set(newValue, forKey: "showPricing") } }
     var probeHour: Int  { get { d.object(forKey: "probeHour") as? Int ?? 7 } set { objectWillChange.send(); d.set(newValue, forKey: "probeHour") } }
+    // Look: two independent switches on the native list. Compact = tighter rows, no lane
+    // descriptions or price lines. Tinted = section headers take their badge colour.
+    var compact: Bool { get { d.object(forKey: "compact") as? Bool ?? false } set { objectWillChange.send(); d.set(newValue, forKey: "compact") } }
+    var tinted: Bool  { get { d.object(forKey: "tinted")  as? Bool ?? false } set { objectWillChange.send(); d.set(newValue, forKey: "tinted") } }
+
 
     func shows(group: String) -> Bool {
         let g = group.lowercased()
@@ -58,7 +78,7 @@ final class AppSettings: ObservableObject {
     func resetAll() {
         objectWillChange.send()
         for k in ["lcpDir","lcpServer","lcpPidfile","hfCache","ollamaHost","claudeConfig","laneStatus","laneProbe","koshaRegistry","terminal",
-                  "showPaid","showCheap","showFree","showPricing","probeHour"] {
+                  "showPaid","showCheap","showFree","showPricing","probeHour","compact","tinted"] {
             d.removeObject(forKey: k)
         }
     }
@@ -132,9 +152,14 @@ enum AppWindows {
 
     static func showAbout() {
         NSApp.activate(ignoringOtherApps: true)
-        let credits = NSMutableAttributedString(string: "Every model you can reach, in the menu bar.\n\n")
-        credits.append(NSAttributedString(string: "github.com/sriinnu/llm-bar", attributes: [.link: URL(string: "https://github.com/sriinnu/llm-bar")!]))
-        credits.append(NSAttributedString(string: "\nMIT licence"))
+        let para = NSMutableParagraphStyle()
+        para.alignment = .center
+        let base: [NSAttributedString.Key: Any] = [.paragraphStyle: para, .font: NSFont.systemFont(ofSize: 12)]
+        let credits = NSMutableAttributedString(string: "Every model you can reach, in the menu bar.\n\n", attributes: base)
+        var link = base
+        link[.link] = URL(string: "https://github.com/sriinnu/llm-bar")!
+        credits.append(NSAttributedString(string: "github.com/sriinnu/llm-bar", attributes: link))
+        credits.append(NSAttributedString(string: "\nMIT licence", attributes: base))
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "LLM Bar",
             .credits: credits,
@@ -212,6 +237,10 @@ struct SettingsView: View {
                         .help("Run `kosha update` then `kosha enrich` (re-discover providers, refresh prices)")
                     }
                 }
+            }
+            Section("Look") {
+                Toggle("Compact rows (no descriptions or prices)", isOn: Binding(get: { settings.compact }, set: { settings.compact = $0 }))
+                Toggle("Tinted section headers", isOn: Binding(get: { settings.tinted }, set: { settings.tinted = $0 }))
             }
             Section("App") {
                 Toggle("Launch at login", isOn: Binding(
