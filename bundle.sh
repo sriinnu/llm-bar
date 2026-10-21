@@ -20,8 +20,8 @@
 #   RELEASE_DOWNLOAD_URL         # public URL where the .zip will be hosted
 #
 # Optional:
-#   CFBundleShortVersionString   # semver, default 0.1.0
-#   CFBundleVersion              # build number (integer), default 1
+#   CFBundleShortVersionString   # semver, default 0.3.0
+#   CFBundleVersion              # build number (integer), default 4 (> last appcast build)
 #   APP_NAME                     # default "LLMBar"
 #
 # Outputs:
@@ -55,8 +55,8 @@ MACOS_DIR="${CONTENTS}/MacOS"
 RESOURCES_DIR="${CONTENTS}/Resources"
 FRAMEWORKS_DIR="${CONTENTS}/Frameworks"
 ENTITLEMENTS="entitlements.plist"
-SHORT_VERSION="${CFBundleShortVersionString:-0.1.0}"
-BUILD_VERSION="${CFBundleVersion:-1}"
+SHORT_VERSION="${CFBundleShortVersionString:-0.3.0}"
+BUILD_VERSION="${CFBundleVersion:-4}"   # must stay above the newest appcast item (0.2.0 = build 3)
 SUFEED_URL="${SUFEED_URL:-https://raw.githubusercontent.com/sriinnu/llm-bar/main/appcast.xml}"
 SUPUBLIC_KEY="${SUPUBLIC_KEY:-}"  # populated below if private key is present
 
@@ -148,6 +148,10 @@ if [[ "${MODE}" == "signed" || "${MODE}" == "release" ]] && \
 fi
 
 # ─── 6. Write Info.plist ────────────────────────────────────────────────
+# Dev (ad-hoc) builds must not auto-check: an ad-hoc bundle cannot validate a
+# Developer-ID-signed update, so Sparkle would pop "improperly signed" on every
+# launch. "Check for Updates…" in the footer still works on demand.
+SU_AUTO_CHECKS="true"; [[ "${MODE}" == "dev" ]] && SU_AUTO_CHECKS="false"
 cat > "${CONTENTS}/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -188,7 +192,7 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <key>SUEnableInstallerLauncherService</key>
     <true/>
     <key>SUEnableAutomaticChecks</key>
-    <true/>
+    <${SU_AUTO_CHECKS}/>
     <key>SUScheduledCheckInterval</key>
     <integer>86400</integer>
     <key>NSHumanReadableCopyright</key>
