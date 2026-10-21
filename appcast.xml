@@ -6,6 +6,15 @@
         <description>Auto-update feed for LLMBar.app (formerly SakshiBar)</description>
         <language>en</language>
         <item>
+            <title>LLMBar 0.3.0</title>
+            <pubDate>Wed, 21 Oct 2026 11:00:53 +0000</pubDate>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description>&lt;p&gt;See release notes on GitHub.&lt;/p&gt;</description>
+            <enclosure url="https://github.com/sriinnu/llm-bar/releases/download/v0.3.0/LLMBar-0.3.0.zip" length="2685095" type="application/octet-stream" sparkle:edSignature="XG4NVFD2tXi0oLIvNY+OnXkFjILaAux3DRU2TdNllQThYcVOZmjCn8jwlTd+x4vHXaQzJHN/54a4FTSlfrOpDw==" />
+        </item>
+        <item>
             <title>SakshiBar 0.2.0</title>
             <pubDate>Thu, 09 Jul 2026 09:41:14 +0000</pubDate>
             <sparkle:version>3</sparkle:version>
