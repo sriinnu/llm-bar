@@ -10,7 +10,7 @@ import Foundation
 // pidfile, and port lcp itself uses, so `lcp --status`/`--stop` from a
 // terminal still recognizes a server started from the app, and vice versa.
 
-let LCP_SERVER_PATH = env("LLMBAR_LCP_SERVER", default: NSHomeDirectory() + "/.local/bin/llama-server")
+var LCP_SERVER_PATH: String { AppSettings.shared.string(AppSettings.lcpServer) }
 let LCP_PORT = env("LLMBAR_LCP_PORT", default: "8776")
 let LCP_CTX_SIZE = env("LLMBAR_LCP_CTX_SIZE", default: "32768")
 let LCP_GPU_LAYERS = env("LLMBAR_LCP_GPU_LAYERS", default: "99")

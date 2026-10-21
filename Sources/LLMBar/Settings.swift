@@ -1,0 +1,233 @@
+import AppKit
+import Foundation
+import SwiftUI
+
+// User settings. Resolution order for every path: environment variable (power users,
+// scripts) > UserDefaults (the Settings window) > built-in default. Env wins so a
+// one-off `LLMBAR_LCP_DIR=… ./LLMBar` still behaves as documented.
+final class AppSettings: ObservableObject {
+    static let shared = AppSettings()
+    private let d = UserDefaults.standard
+
+    struct Key {
+        let name: String        // UserDefaults key
+        let env: String         // environment override
+        let fallback: String
+    }
+
+    static let lcpDir       = Key(name: "lcpDir",       env: "LLMBAR_LCP_DIR",        fallback: NSHomeDirectory() + "/llama-cpp-setup/models")
+    static let lcpServer    = Key(name: "lcpServer",    env: "LLMBAR_LCP_SERVER",     fallback: NSHomeDirectory() + "/.local/bin/llama-server")
+    static let lcpPidfile   = Key(name: "lcpPidfile",   env: "LLMBAR_LCP_PIDFILE",    fallback: NSHomeDirectory() + "/.cache/lcp/llama-server.pid")
+    static let hfCache      = Key(name: "hfCache",      env: "LLMBAR_HF_CACHE_DIR",   fallback: NSHomeDirectory() + "/.cache/huggingface/hub")
+    static let ollamaHost   = Key(name: "ollamaHost",   env: "LLMBAR_OLLAMA_HOST",    fallback: "http://127.0.0.1:11434")
+    static let claudeConfig = Key(name: "claudeConfig", env: "LLMBAR_CLAUDE_CONFIG",  fallback: NSHomeDirectory() + "/.claude_config.zsh")
+    static let laneStatus   = Key(name: "laneStatus",   env: "LLMBAR_LANE_STATUS",    fallback: NSHomeDirectory() + "/.cache/lcp/lane-status.json")
+    static let laneProbe    = Key(name: "laneProbe",    env: "LLMBAR_LANE_PROBE",     fallback: "")   // "" = next to the resolved config
+    static let koshaRegistry = Key(name: "koshaRegistry", env: "LLMBAR_KOSHA_REGISTRY", fallback: NSHomeDirectory() + "/.kosha/registry.json")
+    static let terminal     = Key(name: "terminal",     env: "LLMBAR_TERMINAL",       fallback: "Ghostty")
+
+    func string(_ k: Key) -> String {
+        if let e = ProcessInfo.processInfo.environment[k.env], !e.isEmpty { return e }
+        if let v = d.string(forKey: k.name), !v.isEmpty { return v }
+        return k.fallback
+    }
+    func isEnvOverridden(_ k: Key) -> Bool {
+        !(ProcessInfo.processInfo.environment[k.env] ?? "").isEmpty
+    }
+    func set(_ k: Key, _ value: String) {
+        objectWillChange.send()
+        let trimmed = value.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty || trimmed == k.fallback { d.removeObject(forKey: k.name) } else { d.set(trimmed, forKey: k.name) }
+    }
+
+    // Lane groups shown in the Cloud lanes card (lcp-help section headers).
+    var showPaid: Bool  { get { d.object(forKey: "showPaid")  as? Bool ?? true } set { objectWillChange.send(); d.set(newValue, forKey: "showPaid") } }
+    var showCheap: Bool { get { d.object(forKey: "showCheap") as? Bool ?? true } set { objectWillChange.send(); d.set(newValue, forKey: "showCheap") } }
+    var showFree: Bool  { get { d.object(forKey: "showFree")  as? Bool ?? true } set { objectWillChange.send(); d.set(newValue, forKey: "showFree") } }
+    var showPricing: Bool { get { d.object(forKey: "showPricing") as? Bool ?? true } set { objectWillChange.send(); d.set(newValue, forKey: "showPricing") } }
+    var probeHour: Int  { get { d.object(forKey: "probeHour") as? Int ?? 7 } set { objectWillChange.send(); d.set(newValue, forKey: "probeHour") } }
+
+    func shows(group: String) -> Bool {
+        let g = group.lowercased()
+        if g.contains("cheap") { return showCheap }
+        if g.contains("free") { return showFree }
+        return showPaid
+    }
+
+    func resetAll() {
+        objectWillChange.send()
+        for k in ["lcpDir","lcpServer","lcpPidfile","hfCache","ollamaHost","claudeConfig","laneStatus","laneProbe","koshaRegistry","terminal",
+                  "showPaid","showCheap","showFree","showPricing","probeHour"] {
+            d.removeObject(forKey: k)
+        }
+    }
+}
+
+// MARK: - launchd agent for the daily probe
+
+let LANE_PROBE_LAUNCHD_LABEL = "com.sriinnu.lane-status"
+
+func laneProbePlistPath() -> String {
+    NSHomeDirectory() + "/Library/LaunchAgents/\(LANE_PROBE_LAUNCHD_LABEL).plist"
+}
+
+func laneProbeAgentInstalled() -> Bool {
+    FileManager.default.fileExists(atPath: laneProbePlistPath())
+}
+
+/// Writes the agent plist (daily at `hour`:00 + at login) and (re)loads it. Returns an error string on failure.
+func installLaneProbeAgent(hour: Int) -> String? {
+    let probe = LANE_PROBE_PATH
+    guard FileManager.default.isReadableFile(atPath: probe) else { return "probe script not found: \(probe)" }
+    let log = NSHomeDirectory() + "/.cache/lcp/lane-status.log"
+    let plist = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+        <key>Label</key><string>\(LANE_PROBE_LAUNCHD_LABEL)</string>
+        <key>ProgramArguments</key><array><string>/bin/zsh</string><string>\(probe)</string></array>
+        <key>RunAtLoad</key><true/>
+        <key>StartCalendarInterval</key><dict><key>Hour</key><integer>\(hour)</integer><key>Minute</key><integer>0</integer></dict>
+        <key>StandardOutPath</key><string>\(log)</string>
+        <key>StandardErrorPath</key><string>\(log)</string>
+    </dict>
+    </plist>
+    """
+    let path = laneProbePlistPath()
+    do {
+        try FileManager.default.createDirectory(atPath: (path as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
+        try plist.write(toFile: path, atomically: true, encoding: .utf8)
+    } catch { return error.localizedDescription }
+    let uid = getuid()
+    _ = runLaunchctl(["bootout", "gui/\(uid)/\(LANE_PROBE_LAUNCHD_LABEL)"])
+    let (code, out) = runLaunchctl(["bootstrap", "gui/\(uid)", path])
+    return code == 0 ? nil : "launchctl bootstrap failed: \(out)"
+}
+
+func removeLaneProbeAgent() {
+    _ = runLaunchctl(["bootout", "gui/\(getuid())/\(LANE_PROBE_LAUNCHD_LABEL)"])
+    try? FileManager.default.removeItem(atPath: laneProbePlistPath())
+}
+
+private func runLaunchctl(_ args: [String]) -> (Int32, String) {
+    let p = Process()
+    p.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+    p.arguments = args
+    let pipe = Pipe()
+    p.standardOutput = pipe
+    p.standardError = pipe
+    do { try p.run() } catch { return (1, error.localizedDescription) }
+    p.waitUntilExit()
+    let out = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    return (p.terminationStatus, out.trimmingCharacters(in: .whitespacesAndNewlines))
+}
+
+// MARK: - Windows (About, Settings) for a menu-bar-only app
+
+@MainActor
+enum AppWindows {
+    private static var settingsWindow: NSWindow?
+
+    static func showAbout() {
+        NSApp.activate(ignoringOtherApps: true)
+        let credits = NSMutableAttributedString(string: "Every model you can reach, in the menu bar.\n\n")
+        credits.append(NSAttributedString(string: "github.com/sriinnu/llm-bar", attributes: [.link: URL(string: "https://github.com/sriinnu/llm-bar")!]))
+        credits.append(NSAttributedString(string: "\nMIT licence · formerly SakshiBar"))
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .applicationName: "LLM Bar",
+            .credits: credits,
+        ])
+    }
+
+    static func showSettings(state: AppState) {
+        if settingsWindow == nil {
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 560, height: 620),
+                             styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            w.title = "LLM Bar Settings"
+            w.isReleasedWhenClosed = false
+            w.contentView = NSHostingView(rootView: SettingsView(settings: AppSettings.shared, state: state))
+            w.center()
+            settingsWindow = w
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+}
+
+struct SettingsView: View {
+    @ObservedObject var settings: AppSettings
+    let state: AppState
+    @State private var agentMessage = ""
+
+    var body: some View {
+        Form {
+            Section("Local models") {
+                pathField("llama.cpp models dir", AppSettings.lcpDir)
+                pathField("llama-server binary", AppSettings.lcpServer)
+                pathField("llama-server pidfile", AppSettings.lcpPidfile)
+                pathField("Hugging Face cache", AppSettings.hfCache)
+                pathField("Ollama API host", AppSettings.ollamaHost)
+            }
+            Section("Cloud lanes") {
+                pathField("Claude Code config (lane list)", AppSettings.claudeConfig)
+                pathField("Lane status cache", AppSettings.laneStatus)
+                pathField("Probe script (blank = next to config)", AppSettings.laneProbe)
+                Picker("Open lanes in", selection: Binding(
+                    get: { settings.string(AppSettings.terminal) },
+                    set: { settings.set(AppSettings.terminal, $0) })) {
+                    Text("Ghostty").tag("Ghostty")
+                    Text("Terminal.app").tag("Terminal")
+                }
+                Toggle("Show paid lanes", isOn: Binding(get: { settings.showPaid }, set: { settings.showPaid = $0 }))
+                Toggle("Show cheap OpenRouter lanes", isOn: Binding(get: { settings.showCheap }, set: { settings.showCheap = $0 }))
+                Toggle("Show free-tier lanes", isOn: Binding(get: { settings.showFree }, set: { settings.showFree = $0 }))
+            }
+            Section("Pricing (kosha)") {
+                pathField("kosha registry", AppSettings.koshaRegistry)
+                Toggle("Show model price under each lane", isOn: Binding(get: { settings.showPricing }, set: { settings.showPricing = $0 }))
+                Text(KoshaRegistry.shared.summary)
+                    .font(.system(size: 10.5)).foregroundStyle(.secondary)
+            }
+            Section("Daily probe (launchd)") {
+                Stepper("Run at \(String(format: "%02d:00", settings.probeHour)) and at login",
+                        value: Binding(get: { settings.probeHour }, set: { settings.probeHour = $0 }), in: 0...23)
+                HStack {
+                    Button(laneProbeAgentInstalled() ? "Reinstall agent" : "Install agent") {
+                        agentMessage = installLaneProbeAgent(hour: settings.probeHour) ?? "installed: \(LANE_PROBE_LAUNCHD_LABEL)"
+                        state.refresh()
+                    }
+                    if laneProbeAgentInstalled() {
+                        Button("Remove agent") { removeLaneProbeAgent(); agentMessage = "removed"; state.refresh() }
+                    }
+                    Button("Probe now") { state.refreshLanes(); agentMessage = "probing…" }
+                }
+                if !agentMessage.isEmpty {
+                    Text(agentMessage).font(.system(size: 10.5)).foregroundStyle(.secondary)
+                }
+            }
+            Section {
+                HStack {
+                    Button("Reset to defaults") { settings.resetAll(); state.refresh() }
+                    Spacer()
+                    Text("Environment variables (LLMBAR_*) override these.")
+                        .font(.system(size: 10.5)).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 560)
+        .onDisappear { state.refresh() }
+    }
+
+    @ViewBuilder
+    private func pathField(_ label: String, _ key: AppSettings.Key) -> some View {
+        let overridden = settings.isEnvOverridden(key)
+        TextField(label, text: Binding(
+            get: { settings.string(key) },
+            set: { settings.set(key, $0) }))
+            .disabled(overridden)
+            .help(overridden ? "Set by \(key.env) in the environment" : "Default: \(key.fallback)")
+            .font(.system(size: 11, design: .monospaced))
+    }
+}

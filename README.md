@@ -37,6 +37,12 @@ Run the probe yourself with `lane-status` in a shell that has the config sourced
 
 The probe posts a macOS notification when any lane's status changes between runs.
 
+## Settings, pricing, About
+
+- **Settings** (gear in the header): every path below, the terminal used to open lanes, which lane groups to show, and the daily probe agent (pick the hour, install or remove the launchd job, probe now). Stored in UserDefaults; `LLMBAR_*` environment variables still win and show as locked fields.
+- **Pricing**: if [kosha](https://github.com/sriinnu/kosha-discovery) is installed, each lane shows the probed model with its input / output price per million tokens and context window, read straight from `~/.kosha/registry.json`. The probe records which kosha provider a lane maps to, so a model served by ten providers shows the right row. No kosha, no line.
+- **About**: the standard macOS panel from the footer.
+
 ## Requirements
 
 - macOS 14+
@@ -68,8 +74,9 @@ Menu bar only, no Dock icon. Add it to **System Settings → General → Login I
 | Lane status cache | `LLMBAR_LANE_STATUS` | `~/.cache/lcp/lane-status.json` |
 | Lane probe script | `LLMBAR_LANE_PROBE` | `scripts/lane-status.zsh` next to the resolved config |
 | Terminal for lane launch | `LLMBAR_TERMINAL` | `Ghostty` |
+| kosha registry (pricing) | `LLMBAR_KOSHA_REGISTRY` | `~/.kosha/registry.json` |
 
-Env vars set via `open` don't reach a `.app`; export them and run the binary inside the bundle, or edit the defaults in `Sources/LLMBar/Models.swift` / `Lanes.swift`.
+Prefer the Settings window. Env vars set via `open` don't reach a `.app`; export them and run the binary inside the bundle if you need them.
 
 ## How it works
 

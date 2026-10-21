@@ -7,11 +7,12 @@ func env(_ key: String, default def: String) -> String {
     ProcessInfo.processInfo.environment[key] ?? def
 }
 
-let LCP_MODELS_DIR = env("LLMBAR_LCP_DIR", default: NSHomeDirectory() + "/llama-cpp-setup/models")
-let LCP_PIDFILE = env("LLMBAR_LCP_PIDFILE", default: NSHomeDirectory() + "/.cache/lcp/llama-server.pid")
-let HF_CACHE_DIR = env("LLMBAR_HF_CACHE_DIR", default: NSHomeDirectory() + "/.cache/huggingface/hub")
-let OLLAMA_HOST = env("LLMBAR_OLLAMA_HOST", default: "http://127.0.0.1:11434")
-let OLLAMA_TAGS_URL = URL(string: OLLAMA_HOST + "/api/tags")!
+// Resolved per access (env var > Settings window > default) so the Settings window takes effect live.
+var LCP_MODELS_DIR: String { AppSettings.shared.string(AppSettings.lcpDir) }
+var LCP_PIDFILE: String { AppSettings.shared.string(AppSettings.lcpPidfile) }
+var HF_CACHE_DIR: String { AppSettings.shared.string(AppSettings.hfCache) }
+var OLLAMA_HOST: String { AppSettings.shared.string(AppSettings.ollamaHost) }
+var OLLAMA_TAGS_URL: URL { URL(string: OLLAMA_HOST + "/api/tags") ?? URL(string: "http://127.0.0.1:11434/api/tags")! }
 
 let byteFormatter: ByteCountFormatter = {
     let f = ByteCountFormatter()

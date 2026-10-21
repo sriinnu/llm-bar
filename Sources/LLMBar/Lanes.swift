@@ -8,16 +8,17 @@ import Foundation
 // Everything is path-overridable so this stays usable for anyone with a
 // similar dotfile, not just one machine.
 
-let CLAUDE_CONFIG_PATH = env("LLMBAR_CLAUDE_CONFIG", default: NSHomeDirectory() + "/.claude_config.zsh")
-let LANE_STATUS_PATH = env("LLMBAR_LANE_STATUS", default: NSHomeDirectory() + "/.cache/lcp/lane-status.json")
-let LANE_PROBE_PATH: String = {
-    if let p = ProcessInfo.processInfo.environment["LLMBAR_LANE_PROBE"] { return p }
+var CLAUDE_CONFIG_PATH: String { AppSettings.shared.string(AppSettings.claudeConfig) }
+var LANE_STATUS_PATH: String { AppSettings.shared.string(AppSettings.laneStatus) }
+var LANE_PROBE_PATH: String {
+    let configured = AppSettings.shared.string(AppSettings.laneProbe)
+    if !configured.isEmpty { return configured }
     // Default: scripts/lane-status.zsh next to the real config file (follow the ~/.claude_config.zsh symlink).
     let resolved = (try? FileManager.default.destinationOfSymbolicLink(atPath: CLAUDE_CONFIG_PATH)) ?? CLAUDE_CONFIG_PATH
     let dir = (resolved as NSString).deletingLastPathComponent
     return dir + "/scripts/lane-status.zsh"
-}()
-let TERMINAL_APP = env("LLMBAR_TERMINAL", default: "Ghostty")
+}
+var TERMINAL_APP: String { AppSettings.shared.string(AppSettings.terminal) }
 
 struct LaneEntry: Identifiable, Hashable {
     var id: String { name }
@@ -34,6 +35,7 @@ struct LaneStatus: Decodable {
     let model: String
     let detail: String?
     let shared_with: String?
+    let kosha_provider: String?
 }
 
 struct LaneStatusDoc: Decodable {
@@ -50,7 +52,8 @@ private let laneExclusions: Set<String> = [
 /// Parses the `lcp-help` heredoc: section headers are two-space-indented
 /// capitalised lines, lane rows are four-space-indented `name  description`.
 /// Only rows under CLOUD sections whose name is also a defined function count.
-func parseLanes(configPath: String = CLAUDE_CONFIG_PATH) -> [LaneEntry] {
+func parseLanes(configPath: String? = nil) -> [LaneEntry] {
+    let configPath = configPath ?? CLAUDE_CONFIG_PATH
     guard let text = try? String(contentsOfFile: configPath, encoding: .utf8) else { return [] }
     let lines = text.components(separatedBy: "\n")
     guard let start = lines.firstIndex(where: { $0.hasPrefix("lcp-help()") }) else { return [] }
@@ -85,7 +88,8 @@ func parseLanes(configPath: String = CLAUDE_CONFIG_PATH) -> [LaneEntry] {
     return lanes
 }
 
-func loadLaneStatus(path: String = LANE_STATUS_PATH) -> LaneStatusDoc? {
+func loadLaneStatus(path: String? = nil) -> LaneStatusDoc? {
+    let path = path ?? LANE_STATUS_PATH
     guard let data = FileManager.default.contents(atPath: path) else { return nil }
     return try? JSONDecoder().decode(LaneStatusDoc.self, from: data)
 }
