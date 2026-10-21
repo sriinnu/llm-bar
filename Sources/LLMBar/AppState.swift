@@ -51,6 +51,22 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Cheap: re-read the lane status cache only (used by the menu-bar badge timer).
+    func reloadLaneStatus() {
+        if lanes.isEmpty { lanes = parseLanes() }
+        if let doc = loadLaneStatus() {
+            laneStatus = doc.lanes
+            laneProbedAt = doc.probed_at
+        }
+    }
+
+    /// Lanes (among the shown groups) whose status needs a human: auth, balance, down, error.
+    var laneAttentionCount: Int {
+        lanes.filter { AppSettings.shared.shows(group: $0.group) }
+            .filter { ["auth", "balance", "down", "error"].contains(laneStatus[$0.name]?.status ?? "") }
+            .count
+    }
+
     /// Re-probes every lane (5–10 s, network) and reloads the cache.
     func refreshLanes() {
         guard !laneProbeRunning else { return }
@@ -62,8 +78,12 @@ final class AppState: ObservableObject {
                 self.laneStatus = doc.lanes
                 self.laneProbedAt = doc.probed_at
             }
+            self.onLaneStatusChanged?()
         }
     }
+
+    /// Set by the app delegate to update the menu-bar badge.
+    var onLaneStatusChanged: (() -> Void)?
 
     /// Called once when the popover opens; polls a few times while a server
     /// is mid-startup so the UI flips from "starting…" to "running" without

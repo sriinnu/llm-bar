@@ -145,7 +145,7 @@ struct ContentView: View {
             footer
         }
         .frame(width: 360)
-        .background(.regularMaterial)
+        .background(.ultraThinMaterial)
     }
 
     private var appVersion: String {
@@ -162,6 +162,7 @@ struct ContentView: View {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text("LLM Bar")
                     .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(LinearGradient(colors: [Color(red: 0.49, green: 0.42, blue: 1.0), Color(red: 0.18, green: 0.71, blue: 1.0)], startPoint: .leading, endPoint: .trailing))
                 Text(appVersion)
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
@@ -171,12 +172,14 @@ struct ContentView: View {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
-            .help("Refresh")
+            .keyboardShortcut("r", modifiers: .command)
+            .help("Refresh (⌘R)")
             Button(action: { AppWindows.showSettings(state: state) }) {
                 Image(systemName: "gearshape")
             }
             .buttonStyle(.borderless)
-            .help("Settings")
+            .keyboardShortcut(",", modifiers: .command)
+            .help("Settings (⌘,)")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -200,6 +203,7 @@ struct ContentView: View {
             Button("Quit") { onQuit() }
                 .buttonStyle(.borderless)
                 .font(.system(size: 11))
+                .keyboardShortcut("q", modifiers: .command)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -271,8 +275,15 @@ private struct SectionCard<Content: View>: View {
         }
         .padding(10)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.primary.opacity(0.045))
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.thinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(colors: [Color.white.opacity(0.35), Color.white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                            lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.10), radius: 8, x: 0, y: 3)
         )
     }
 }

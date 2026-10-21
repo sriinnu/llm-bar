@@ -7,8 +7,6 @@ Every model you can reach, in the macOS menu bar.
 
 Native AppKit + SwiftUI, Swift Package Manager, Sparkle auto-updates. No Python runtime, no Electron, no SwiftBar/xbar.
 
-> Formerly **SakshiBar** / LocalModelsBar. Renamed on 2026-10-21 when cloud lanes landed and "local" stopped being true. Old release URLs under `local-models-bar` redirect.
-
 ## What it shows
 
 - **Local (lcp)** — GGUF files in your llama.cpp models directory, with live `llama-server` running/stopped status and a start button per model (memory-checked first). Split GGUFs are grouped as one model.
@@ -42,6 +40,9 @@ The probe posts a macOS notification when any lane's status changes between runs
 - **Settings** (gear in the header): every path below, the terminal used to open lanes, which lane groups to show, and the daily probe agent (pick the hour, install or remove the launchd job, probe now). Stored in UserDefaults; `LLMBAR_*` environment variables still win and show as locked fields.
 - **Pricing**: if [kosha](https://github.com/sriinnu/kosha-discovery) is installed, each lane shows the probed model with its input / output price per million tokens and context window, read straight from `~/.kosha/registry.json`. The probe records which kosha provider a lane maps to, so a model served by ten providers shows the right row. No kosha, no line.
 - **About**: the standard macOS panel from the footer.
+- **Menu bar badge**: a red dot on the icon whenever a shown lane is in auth / balance / down / error state. Re-read from the cache every 10 minutes and after each probe; no network.
+- **Launch at login** toggle in Settings; **⌘R** refresh, **⌘,** settings, **⌘Q** quit while the popover is open.
+- The kosha section has a reload button that runs `kosha update` then `kosha enrich`.
 
 ## Requirements
 
