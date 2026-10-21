@@ -5,11 +5,11 @@ Every model you can reach, in the macOS menu bar.
 **Local:** [llama.cpp](https://github.com/ggml-org/llama.cpp) GGUF models with a working start/stop for `llama-server`, [Ollama](https://ollama.com) models, and your Hugging Face cache.
 **Cloud:** every Claude Code provider lane from your `claude_config.zsh` (DeepSeek, Kimi, Qwen, GLM, SiliconFlow, OpenRouter, …) with a live health dot, latency, and a one-click launch into a terminal.
 
-Native AppKit + SwiftUI, Swift Package Manager, Sparkle auto-updates. No Python runtime, no Electron, no SwiftBar/xbar.
+Native AppKit + SwiftUI, Swift Package Manager, Sparkle auto-updates. No Python runtime, no Electron, no SwiftBar/xbar. The popover is a plain macOS-style list: small-caps section headers, hairline rows, no cards.
 
 ## What it shows
 
-- **Local (lcp)** — GGUF files in your llama.cpp models directory, with live `llama-server` running/stopped status and a start button per model (memory-checked first). Split GGUFs are grouped as one model.
+- **Local (lcp)** — GGUF files in your llama.cpp models directory (taken from `_LCP_MODELS_DIR` in `claude_config.zsh` when present), with live `llama-server` running/stopped status and a start button per model (memory-checked first). Split GGUFs are grouped as one model.
 - **Ollama** — models from Ollama's local API (`:11434`), cloud-proxied ones marked. Launch/quit Ollama.app from the row.
 - **Cloud lanes** — the launchers defined in your `claude_config.zsh`. For each: a status dot (green ok · yellow rate-limited · red auth/balance/down · orange no key · grey not probed), the lane's one-line description, last probe latency, and a terminal button that opens the lane in a new Ghostty window (Terminal.app fallback). A header shows when the lanes were last probed and lets you re-probe now.
 - **Hugging Face cache** — repos in `~/.cache/huggingface/hub`, sized on disk.
@@ -41,6 +41,7 @@ The probe posts a macOS notification when any lane's status changes between runs
 - **Pricing**: if [kosha](https://github.com/sriinnu/kosha-discovery) is installed, each lane shows the probed model with its input / output price per million tokens and context window, read straight from `~/.kosha/registry.json`. The probe records which kosha provider a lane maps to, so a model served by ten providers shows the right row. No kosha, no line.
 - **About**: the standard macOS panel from the footer.
 - **Menu bar badge**: a red dot on the icon whenever a shown lane is in auth / balance / down / error state. Re-read from the cache every 10 minutes and after each probe; no network.
+- **Look** (Settings): *Compact rows* hides lane descriptions and price lines and tightens spacing; *Tinted section headers* colours each header with its badge.
 - **Launch at login** toggle in Settings; **⌘R** refresh, **⌘,** settings, **⌘Q** quit while the popover is open.
 - The kosha section has a reload button that runs `kosha update` then `kosha enrich`.
 
@@ -66,7 +67,7 @@ Menu bar only, no Dock icon. Add it to **System Settings → General → Login I
 
 | What | Env var | Default |
 |---|---|---|
-| llama.cpp models dir | `LLMBAR_LCP_DIR` | `~/llama-cpp-setup/models` |
+| llama.cpp models dir | `LLMBAR_LCP_DIR` | `_LCP_MODELS_DIR` from your config if present, else `~/llama-cpp-setup/models` |
 | llama-server binary | `LLMBAR_LCP_SERVER` | `~/.local/bin/llama-server` |
 | llama-server pidfile | `LLMBAR_LCP_PIDFILE` | `~/.cache/lcp/llama-server.pid` |
 | Hugging Face cache | `LLMBAR_HF_CACHE_DIR` | `~/.cache/huggingface/hub` |
