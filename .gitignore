@@ -1,5 +1,7 @@
 .build/
+LLMBar.app/
 SakshiBar.app/
+LLMBar-*.zip
 SakshiBar-*.zip
 .DS_Store
 sparkle_ed25519_priv

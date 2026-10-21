@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bundle.sh — build, sign, notarize, and package SakshiBar.app
+# bundle.sh — build, sign, notarize, and package LLMBar.app
 #
 # Three modes:
 #
@@ -22,11 +22,11 @@
 # Optional:
 #   CFBundleShortVersionString   # semver, default 0.1.0
 #   CFBundleVersion              # build number (integer), default 1
-#   APP_NAME                     # default "SakshiBar"
+#   APP_NAME                     # default "LLMBar"
 #
 # Outputs:
-#   SakshiBar.app                # the .app bundle (always)
-#   SakshiBar-X.Y.Z.zip           # ditto-zipped, ready for upload (--release)
+#   LLMBar.app                   # the .app bundle (always)
+#   LLMBar-X.Y.Z.zip              # ditto-zipped, ready for upload (--release)
 #   appcast.xml                  # updated with new release item (--release)
 
 set -euo pipefail
@@ -48,7 +48,7 @@ for arg in "$@"; do
 done
 
 # ─── Config ─────────────────────────────────────────────────────────────
-APP_NAME="${APP_NAME:-SakshiBar}"
+APP_NAME="${APP_NAME:-LLMBar}"
 APP_DIR="${APP_NAME}.app"
 CONTENTS="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS}/MacOS"
@@ -57,7 +57,7 @@ FRAMEWORKS_DIR="${CONTENTS}/Frameworks"
 ENTITLEMENTS="entitlements.plist"
 SHORT_VERSION="${CFBundleShortVersionString:-0.1.0}"
 BUILD_VERSION="${CFBundleVersion:-1}"
-SUFEED_URL="${SUFEED_URL:-https://raw.githubusercontent.com/sriinnu/local-models-bar/main/appcast.xml}"
+SUFEED_URL="${SUFEED_URL:-https://raw.githubusercontent.com/sriinnu/llm-bar/main/appcast.xml}"
 SUPUBLIC_KEY="${SUPUBLIC_KEY:-}"  # populated below if private key is present
 
 # ─── 1. Build the binary ────────────────────────────────────────────────
@@ -97,7 +97,7 @@ if [[ -f "branding/icon.svg" ]]; then
 fi
 
 # Section badge glyphs (popover UI) — same reasoning as icon.svg above.
-for badge in badge-lcp badge-ollama badge-hf; do
+for badge in badge-lcp badge-ollama badge-hf badge-cloud; do
     if [[ -f "branding/${badge}.svg" ]]; then
         cp "branding/${badge}.svg" "${RESOURCES_DIR}/${badge}.svg"
     fi
@@ -158,13 +158,13 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <key>CFBundleExecutable</key>
     <string>${APP_NAME}</string>
     <key>CFBundleIdentifier</key>
-    <string>com.sriinnu.sakshibar</string>
+    <string>com.sriinnu.llmbar</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
     <string>${APP_NAME}</string>
     <key>CFBundleDisplayName</key>
-    <string>Sakshi</string>
+    <string>LLM Bar</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIconName</key>
@@ -287,7 +287,7 @@ if [[ "${MODE}" == "release" ]]; then
         exit 4
     fi
     if [[ -z "${RELEASE_DOWNLOAD_URL:-}" ]]; then
-        RELEASE_DOWNLOAD_URL="https://github.com/sriinnu/local-models-bar/releases/download/v{VERSION}/${APP_NAME}-{VERSION}.zip"
+        RELEASE_DOWNLOAD_URL="https://github.com/sriinnu/llm-bar/releases/download/v{VERSION}/${APP_NAME}-{VERSION}.zip"
     fi
     RELEASE_DOWNLOAD_URL="${RELEASE_DOWNLOAD_URL//\{VERSION\}/${SHORT_VERSION}}"
     if [[ "${RELEASE_DOWNLOAD_URL}" != *"${SHORT_VERSION}"* ]]; then

@@ -1,16 +1,16 @@
 import Foundation
 
 // Every path below can be overridden via env var so this isn't tied to one
-// machine's folder layout — SakshiBar is a public app, not everyone has
+// machine's folder layout — LLM Bar is a public app, not everyone has
 // this exact llama-cpp-setup convention.
 func env(_ key: String, default def: String) -> String {
     ProcessInfo.processInfo.environment[key] ?? def
 }
 
-let LCP_MODELS_DIR = env("LOCALMODELSBAR_LCP_DIR", default: NSHomeDirectory() + "/llama-cpp-setup/models")
-let LCP_PIDFILE = env("LOCALMODELSBAR_LCP_PIDFILE", default: NSHomeDirectory() + "/.cache/lcp/llama-server.pid")
-let HF_CACHE_DIR = env("LOCALMODELSBAR_HF_CACHE_DIR", default: NSHomeDirectory() + "/.cache/huggingface/hub")
-let OLLAMA_HOST = env("LOCALMODELSBAR_OLLAMA_HOST", default: "http://127.0.0.1:11434")
+let LCP_MODELS_DIR = env("LLMBAR_LCP_DIR", default: NSHomeDirectory() + "/llama-cpp-setup/models")
+let LCP_PIDFILE = env("LLMBAR_LCP_PIDFILE", default: NSHomeDirectory() + "/.cache/lcp/llama-server.pid")
+let HF_CACHE_DIR = env("LLMBAR_HF_CACHE_DIR", default: NSHomeDirectory() + "/.cache/huggingface/hub")
+let OLLAMA_HOST = env("LLMBAR_OLLAMA_HOST", default: "http://127.0.0.1:11434")
 let OLLAMA_TAGS_URL = URL(string: OLLAMA_HOST + "/api/tags")!
 
 let byteFormatter: ByteCountFormatter = {

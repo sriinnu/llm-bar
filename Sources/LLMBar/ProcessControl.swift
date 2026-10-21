@@ -5,17 +5,17 @@ import Foundation
 // Self-contained llama-server start/stop, deliberately NOT shelling out to the
 // `lcp` shell function — that function also launches an entire Claude Code
 // session tied to the server and blocks waiting for it to exit, which is the
-// wrong shape for a GUI start/stop button, and SakshiBar needs to work for
+// wrong shape for a GUI start/stop button, and LLM Bar needs to work for
 // people who don't have that dotfile at all. This mirrors the same flags,
 // pidfile, and port lcp itself uses, so `lcp --status`/`--stop` from a
 // terminal still recognizes a server started from the app, and vice versa.
 
-let LCP_SERVER_PATH = env("LOCALMODELSBAR_LCP_SERVER", default: NSHomeDirectory() + "/.local/bin/llama-server")
-let LCP_PORT = env("LOCALMODELSBAR_LCP_PORT", default: "8776")
-let LCP_CTX_SIZE = env("LOCALMODELSBAR_LCP_CTX_SIZE", default: "32768")
-let LCP_GPU_LAYERS = env("LOCALMODELSBAR_LCP_GPU_LAYERS", default: "99")
-let LCP_BATCH_SIZE = env("LOCALMODELSBAR_LCP_BATCH_SIZE", default: "4096")
-let LCP_UBATCH_SIZE = env("LOCALMODELSBAR_LCP_UBATCH_SIZE", default: "1024")
+let LCP_SERVER_PATH = env("LLMBAR_LCP_SERVER", default: NSHomeDirectory() + "/.local/bin/llama-server")
+let LCP_PORT = env("LLMBAR_LCP_PORT", default: "8776")
+let LCP_CTX_SIZE = env("LLMBAR_LCP_CTX_SIZE", default: "32768")
+let LCP_GPU_LAYERS = env("LLMBAR_LCP_GPU_LAYERS", default: "99")
+let LCP_BATCH_SIZE = env("LLMBAR_LCP_BATCH_SIZE", default: "4096")
+let LCP_UBATCH_SIZE = env("LLMBAR_LCP_UBATCH_SIZE", default: "1024")
 let LCP_LOG_PATH = NSHomeDirectory() + "/.cache/lcp/llama-server.log"
 
 enum LcpStartResult {

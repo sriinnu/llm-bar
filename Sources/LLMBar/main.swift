@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             let icon = (Bundle.main.url(forResource: "icon", withExtension: "svg")
                 ?? Bundle.module.url(forResource: "icon", withExtension: "svg"))
                 .flatMap { NSImage(contentsOf: $0) }
-                ?? NSImage(systemSymbolName: "cpu", accessibilityDescription: "Sakshi")
+                ?? NSImage(systemSymbolName: "cpu", accessibilityDescription: "LLM Bar")
             icon?.isTemplate = false  // keep the gradient — don't let the menu bar flatten it to monochrome
             icon?.size = NSSize(width: 18, height: 18)
             button.image = icon

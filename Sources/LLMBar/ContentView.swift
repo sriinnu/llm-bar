@@ -83,6 +83,40 @@ struct ContentView: View {
                     }
 
                     SectionCard(
+                        badge: loadBadge("badge-cloud"),
+                        title: "Cloud lanes",
+                        subtitle: laneSubtitle
+                    ) {
+                        HStack(spacing: 6) {
+                            Text(state.laneProbedAt.map { "probed \(relativeAge($0))" } ?? "not probed yet")
+                                .font(.system(size: 10.5))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            if state.laneProbeRunning {
+                                ProgressView().controlSize(.mini)
+                            } else if state.laneProbeAvailable {
+                                Button(action: { state.refreshLanes() }) {
+                                    Image(systemName: "antenna.radiowaves.left.and.right")
+                                        .font(.system(size: 10))
+                                }
+                                .buttonStyle(.borderless)
+                                .help("Probe every lane now (one 8-token request each)")
+                            }
+                        }
+                        if state.lanes.isEmpty {
+                            EmptyRow(text: "No lanes found — expected an lcp-help block in \(CLAUDE_CONFIG_PATH)")
+                        } else {
+                            ForEach(state.lanes) { lane in
+                                LaneRow(
+                                    lane: lane,
+                                    status: state.laneStatus[lane.name],
+                                    onLaunch: { launchLane(lane.name) }
+                                )
+                            }
+                        }
+                    }
+
+                    SectionCard(
                         badge: loadBadge("badge-hf"),
                         title: "Hugging Face cache",
                         subtitle: subtitle(for: state.hfModels)
@@ -124,7 +158,7 @@ struct ContentView: View {
                 .resizable()
                 .frame(width: 20, height: 20)
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text("Sakshi")
+                Text("LLM Bar")
                     .font(.system(size: 14, weight: .semibold))
                 Text(appVersion)
                     .font(.system(size: 10))
@@ -165,6 +199,16 @@ struct ContentView: View {
         let total = models.reduce(Int64(0)) { $0 + $1.sizeBytes }
         let countStr = "\(models.count) model\(models.count == 1 ? "" : "s")"
         return total > 0 ? "\(countStr) · \(byteFormatter.string(fromByteCount: total))" : countStr
+    }
+
+    private var laneSubtitle: String {
+        guard !state.lanes.isEmpty else { return "" }
+        let ok = state.lanes.filter { state.laneStatus[$0.name]?.status == "ok" }.count
+        let bad = state.lanes.filter { ["auth", "balance", "down", "error"].contains(state.laneStatus[$0.name]?.status ?? "") }.count
+        var parts = ["\(state.lanes.count) lanes"]
+        if ok > 0 { parts.append("\(ok) up") }
+        if bad > 0 { parts.append("\(bad) need attention") }
+        return parts.joined(separator: " · ")
     }
 
     private func isRunningOrStarting(_ s: ServerState) -> Bool {
@@ -260,6 +304,64 @@ private struct ModelRow: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 1) { onReveal() }
         .padding(.vertical, 2)
+    }
+}
+
+private struct LaneRow: View {
+    let lane: LaneEntry
+    let status: LaneStatus?
+    let onLaunch: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(dotColor)
+                .frame(width: 7, height: 7)
+                .help(statusHelp)
+            Text(lane.name)
+                .font(.system(size: 11, weight: .medium))
+                .lineLimit(1)
+            Text(lane.description)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 6)
+            if let s = status, s.status == "ok", s.ms > 0 {
+                Text("\(s.ms) ms")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            } else if let s = status, s.status != "ok" {
+                Text(s.status)
+                    .font(.system(size: 10))
+                    .foregroundStyle(dotColor)
+            }
+            Button(action: onLaunch) {
+                Image(systemName: "terminal")
+                    .font(.system(size: 10))
+            }
+            .buttonStyle(.borderless)
+            .help("Open `\(lane.name)` in \(TERMINAL_APP)")
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var dotColor: Color {
+        switch status?.status {
+        case "ok": return .green
+        case "ratelimit": return .yellow
+        case "auth", "balance", "down", "error": return .red
+        case "nokey": return .orange
+        default: return .secondary.opacity(0.4)
+        }
+    }
+
+    private var statusHelp: String {
+        guard let s = status else { return "not probed" }
+        var t = "\(s.status) · HTTP \(s.http) · \(s.model)"
+        if let d = s.detail, !d.isEmpty { t += "\n\(d)" }
+        if let w = s.shared_with { t += "\n(shares endpoint + key with \(w))" }
+        return t
     }
 }
 
