@@ -53,6 +53,30 @@ final class KoshaRegistry {
     }
 }
 
+/// `kosha update` (re-discover every provider) then `kosha enrich` (pricing). Runs in a login
+/// shell so Homebrew's PATH applies. Completion on the main thread with the last output line.
+func runKoshaUpdate(completion: @escaping (Bool, String) -> Void) {
+    DispatchQueue.global(qos: .utility).async {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        p.arguments = ["-lc", "command -v kosha >/dev/null || { echo 'kosha not installed (npm i -g kosha-discovery)'; exit 127; }; kosha update 2>&1 | tail -1; kosha enrich 2>&1 | tail -1"]
+        let pipe = Pipe()
+        p.standardOutput = pipe
+        p.standardError = pipe
+        var ok = false
+        var out = ""
+        do {
+            try p.run()
+            p.waitUntilExit()
+            ok = p.terminationStatus == 0
+            out = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        } catch { out = error.localizedDescription }
+        let cleaned = out.replacingOccurrences(of: "\u{1B}\\[[0-9;]*m", with: "", options: .regularExpression)
+            .split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.last ?? (ok ? "updated" : "failed")
+        DispatchQueue.main.async { completion(ok, cleaned) }
+    }
+}
+
 func formatPrice(_ p: KoshaPrice) -> String {
     func f(_ x: Double) -> String { x < 0.01 ? String(format: "%.3f", x) : String(format: "%.2f", x) }
     var s = "$\(f(p.inputPerMillion)) / $\(f(p.outputPerMillion)) per M"

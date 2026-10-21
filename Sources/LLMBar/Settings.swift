@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ServiceManagement
 import SwiftUI
 
 // User settings. Resolution order for every path: environment variable (power users,
@@ -133,7 +134,7 @@ enum AppWindows {
         NSApp.activate(ignoringOtherApps: true)
         let credits = NSMutableAttributedString(string: "Every model you can reach, in the menu bar.\n\n")
         credits.append(NSAttributedString(string: "github.com/sriinnu/llm-bar", attributes: [.link: URL(string: "https://github.com/sriinnu/llm-bar")!]))
-        credits.append(NSAttributedString(string: "\nMIT licence · formerly SakshiBar"))
+        credits.append(NSAttributedString(string: "\nMIT licence"))
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "LLM Bar",
             .credits: credits,
@@ -159,6 +160,9 @@ struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     let state: AppState
     @State private var agentMessage = ""
+    @State private var koshaBusy = false
+    @State private var koshaMessage = ""
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
         Form {
@@ -186,8 +190,40 @@ struct SettingsView: View {
             Section("Pricing (kosha)") {
                 pathField("kosha registry", AppSettings.koshaRegistry)
                 Toggle("Show model price under each lane", isOn: Binding(get: { settings.showPricing }, set: { settings.showPricing = $0 }))
-                Text(KoshaRegistry.shared.summary)
-                    .font(.system(size: 10.5)).foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Text(koshaMessage.isEmpty ? KoshaRegistry.shared.summary : koshaMessage)
+                        .font(.system(size: 10.5)).foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    Spacer()
+                    if koshaBusy {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button(action: {
+                            koshaBusy = true
+                            koshaMessage = "running kosha update + enrich…"
+                            runKoshaUpdate { ok, msg in
+                                koshaBusy = false
+                                koshaMessage = (ok ? "✓ " : "✗ ") + msg
+                                state.refresh()
+                            }
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .help("Run `kosha update` then `kosha enrich` (re-discover providers, refresh prices)")
+                    }
+                }
+            }
+            Section("App") {
+                Toggle("Launch at login", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { on in
+                        do {
+                            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+                            launchAtLogin = SMAppService.mainApp.status == .enabled
+                        } catch {
+                            agentMessage = "launch at login: \(error.localizedDescription)"
+                        }
+                    }))
             }
             Section("Daily probe (launchd)") {
                 Stepper("Run at \(String(format: "%02d:00", settings.probeHour)) and at login",

@@ -17,6 +17,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         userDriverDelegate: nil
     )
 
+    private var baseIcon: NSImage?
+    private var badgeTimer: Timer?
+
+    /// Base icon, plus a small red dot when any shown lane needs attention.
+    func updateStatusIcon() {
+        guard let button = statusItem.button, let base = baseIcon else { return }
+        let n = state.laneAttentionCount
+        if n == 0 {
+            button.image = base
+            button.toolTip = "LLM Bar"
+            return
+        }
+        let size = base.size
+        let img = NSImage(size: size, flipped: false) { rect in
+            base.draw(in: rect)
+            let d: CGFloat = 7
+            let dot = NSRect(x: rect.maxX - d, y: rect.minY, width: d, height: d)
+            NSColor.white.setFill(); NSBezierPath(ovalIn: dot.insetBy(dx: -1, dy: -1)).fill()
+            NSColor.systemRed.setFill(); NSBezierPath(ovalIn: dot).fill()
+            return true
+        }
+        img.isTemplate = false
+        button.image = img
+        button.toolTip = "LLM Bar — \(n) lane\(n == 1 ? "" : "s") need attention"
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let button = statusItem.button {
             // Bundle.main finds Contents/Resources/icon.svg in the packaged .app
@@ -29,9 +55,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 ?? NSImage(systemSymbolName: "cpu", accessibilityDescription: "LLM Bar")
             icon?.isTemplate = false  // keep the gradient — don't let the menu bar flatten it to monochrome
             icon?.size = NSSize(width: 18, height: 18)
+            baseIcon = icon
             button.image = icon
             button.action = #selector(togglePopover(_:))
             button.target = self
+        }
+
+        // Badge: read the status cache now and every 10 minutes (file read only, no network),
+        // and whenever a probe finishes.
+        state.onLaneStatusChanged = { [weak self] in self?.updateStatusIcon() }
+        state.reloadLaneStatus()
+        updateStatusIcon()
+        badgeTimer = Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.state.reloadLaneStatus()
+                self?.updateStatusIcon()
+            }
         }
 
         popover.behavior = .transient
@@ -55,6 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     func popoverDidClose(_ notification: Notification) {
         state.stopPolling()
+        updateStatusIcon()
     }
 }
 
