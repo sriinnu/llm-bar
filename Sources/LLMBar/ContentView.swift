@@ -18,6 +18,7 @@ func loadBadge(_ name: String) -> Image {
 
 struct ContentView: View {
     @ObservedObject var state: AppState
+    @ObservedObject var settings = AppSettings.shared
     let updaterController: SPUStandardUpdaterController
     var onQuit: () -> Void
 
@@ -106,10 +107,11 @@ struct ContentView: View {
                         if state.lanes.isEmpty {
                             EmptyRow(text: "No lanes found — expected an lcp-help block in \(CLAUDE_CONFIG_PATH)")
                         } else {
-                            ForEach(state.lanes) { lane in
+                            ForEach(state.lanes.filter { settings.shows(group: $0.group) }) { lane in
                                 LaneRow(
                                     lane: lane,
                                     status: state.laneStatus[lane.name],
+                                    showPricing: settings.showPricing,
                                     onLaunch: { launchLane(lane.name) }
                                 )
                             }
@@ -170,6 +172,11 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .help("Refresh")
+            Button(action: { AppWindows.showSettings(state: state) }) {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.borderless)
+            .help("Settings")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -185,6 +192,10 @@ struct ContentView: View {
             .disabled(!updaterController.updater.canCheckForUpdates)
 
             Spacer()
+
+            Button("About") { AppWindows.showAbout() }
+                .buttonStyle(.borderless)
+                .font(.system(size: 11))
 
             Button("Quit") { onQuit() }
                 .buttonStyle(.borderless)
@@ -202,10 +213,11 @@ struct ContentView: View {
     }
 
     private var laneSubtitle: String {
-        guard !state.lanes.isEmpty else { return "" }
-        let ok = state.lanes.filter { state.laneStatus[$0.name]?.status == "ok" }.count
-        let bad = state.lanes.filter { ["auth", "balance", "down", "error"].contains(state.laneStatus[$0.name]?.status ?? "") }.count
-        var parts = ["\(state.lanes.count) lanes"]
+        let lanes = state.lanes.filter { settings.shows(group: $0.group) }
+        guard !lanes.isEmpty else { return "" }
+        let ok = lanes.filter { state.laneStatus[$0.name]?.status == "ok" }.count
+        let bad = lanes.filter { ["auth", "balance", "down", "error"].contains(state.laneStatus[$0.name]?.status ?? "") }.count
+        var parts = ["\(lanes.count) lanes"]
         if ok > 0 { parts.append("\(ok) up") }
         if bad > 0 { parts.append("\(bad) need attention") }
         return parts.joined(separator: " · ")
@@ -310,9 +322,33 @@ private struct ModelRow: View {
 private struct LaneRow: View {
     let lane: LaneEntry
     let status: LaneStatus?
+    let showPricing: Bool
     let onLaunch: () -> Void
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            mainLine
+            if showPricing, let s = status, !s.model.isEmpty {
+                HStack(spacing: 4) {
+                    Text(s.model)
+                        .font(.system(size: 9.5, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    if let p = KoshaRegistry.shared.price(model: s.model, provider: s.kosha_provider) {
+                        Text("· " + formatPrice(p))
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
+                }
+                .padding(.leading, 13)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var mainLine: some View {
         HStack(spacing: 6) {
             Circle()
                 .fill(dotColor)
@@ -343,7 +379,6 @@ private struct LaneRow: View {
             .buttonStyle(.borderless)
             .help("Open `\(lane.name)` in \(TERMINAL_APP)")
         }
-        .padding(.vertical, 2)
     }
 
     private var dotColor: Color {

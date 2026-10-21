@@ -20,8 +20,8 @@
 #   RELEASE_DOWNLOAD_URL         # public URL where the .zip will be hosted
 #
 # Optional:
-#   CFBundleShortVersionString   # semver, default 0.3.0
-#   CFBundleVersion              # build number (integer), default 4 (> last appcast build)
+#   CFBundleShortVersionString   # semver, default 0.4.0
+#   CFBundleVersion              # build number (integer), default 5 (> last appcast build)
 #   APP_NAME                     # default "LLMBar"
 #
 # Outputs:
@@ -55,8 +55,8 @@ MACOS_DIR="${CONTENTS}/MacOS"
 RESOURCES_DIR="${CONTENTS}/Resources"
 FRAMEWORKS_DIR="${CONTENTS}/Frameworks"
 ENTITLEMENTS="entitlements.plist"
-SHORT_VERSION="${CFBundleShortVersionString:-0.3.0}"
-BUILD_VERSION="${CFBundleVersion:-4}"   # must stay above the newest appcast item (0.2.0 = build 3)
+SHORT_VERSION="${CFBundleShortVersionString:-0.4.0}"
+BUILD_VERSION="${CFBundleVersion:-5}"   # must stay above the newest appcast item (0.3.0 = build 4)
 SUFEED_URL="${SUFEED_URL:-https://raw.githubusercontent.com/sriinnu/llm-bar/main/appcast.xml}"
 SUPUBLIC_KEY="${SUPUBLIC_KEY:-}"  # populated below if private key is present
 
