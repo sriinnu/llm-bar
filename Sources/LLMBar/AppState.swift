@@ -19,6 +19,12 @@ final class AppState: ObservableObject {
 
     @Published var hfModels: [ModelEntry] = []
 
+    @Published var lanes: [LaneEntry] = []
+    @Published var laneStatus: [String: LaneStatus] = [:]
+    @Published var laneProbedAt: String? = nil
+    @Published var laneProbeRunning = false
+    @Published var laneProbeAvailable = FileManager.default.isReadableFile(atPath: LANE_PROBE_PATH)
+
     private var pollTimer: Timer?
 
     func refresh() {
@@ -33,10 +39,30 @@ final class AppState: ObservableObject {
             self.lcpState = .stopped
         }
 
-        self.ollamaModels = SakshiBar_ollamaModelsIfRunning()
+        self.ollamaModels = LLMBar_ollamaModelsIfRunning()
         self.ollamaAppState = ollamaAppRunning() ? .running : .stopped
 
         self.hfModels = fetchHfCacheModels()
+
+        self.lanes = parseLanes()
+        if let doc = loadLaneStatus() {
+            self.laneStatus = doc.lanes
+            self.laneProbedAt = doc.probed_at
+        }
+    }
+
+    /// Re-probes every lane (5–10 s, network) and reloads the cache.
+    func refreshLanes() {
+        guard !laneProbeRunning else { return }
+        laneProbeRunning = true
+        runLaneProbe { [weak self] _ in
+            guard let self else { return }
+            self.laneProbeRunning = false
+            if let doc = loadLaneStatus() {
+                self.laneStatus = doc.lanes
+                self.laneProbedAt = doc.probed_at
+            }
+        }
     }
 
     /// Called once when the popover opens; polls a few times while a server
@@ -98,7 +124,7 @@ final class AppState: ObservableObject {
 // Ollama's /api/tags 1.5s-timeout probe is a bit much to run every 1.5s poll
 // tick when the app isn't even running — skip the network round trip if the
 // app process itself isn't up.
-private func SakshiBar_ollamaModelsIfRunning() -> [ModelEntry] {
+private func LLMBar_ollamaModelsIfRunning() -> [ModelEntry] {
     guard ollamaAppRunning() else { return [] }
     return fetchOllamaModels()
 }

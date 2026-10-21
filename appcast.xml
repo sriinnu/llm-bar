@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
-        <title>SakshiBar</title>
-        <link>https://github.com/sriinnu/local-models-bar</link>
-        <description>Auto-update feed for SakshiBar.app</description>
+        <title>LLM Bar</title>
+        <link>https://github.com/sriinnu/llm-bar</link>
+        <description>Auto-update feed for LLMBar.app (formerly SakshiBar)</description>
         <language>en</language>
         <item>
             <title>SakshiBar 0.2.0</title>

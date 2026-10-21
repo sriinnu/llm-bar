@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bundle.sh — build, sign, notarize, and package SakshiBar.app
+# bundle.sh — build, sign, notarize, and package LLMBar.app
 #
 # Three modes:
 #
@@ -20,13 +20,13 @@
 #   RELEASE_DOWNLOAD_URL         # public URL where the .zip will be hosted
 #
 # Optional:
-#   CFBundleShortVersionString   # semver, default 0.1.0
-#   CFBundleVersion              # build number (integer), default 1
-#   APP_NAME                     # default "SakshiBar"
+#   CFBundleShortVersionString   # semver, default 0.3.0
+#   CFBundleVersion              # build number (integer), default 4 (> last appcast build)
+#   APP_NAME                     # default "LLMBar"
 #
 # Outputs:
-#   SakshiBar.app                # the .app bundle (always)
-#   SakshiBar-X.Y.Z.zip           # ditto-zipped, ready for upload (--release)
+#   LLMBar.app                   # the .app bundle (always)
+#   LLMBar-X.Y.Z.zip              # ditto-zipped, ready for upload (--release)
 #   appcast.xml                  # updated with new release item (--release)
 
 set -euo pipefail
@@ -48,16 +48,16 @@ for arg in "$@"; do
 done
 
 # ─── Config ─────────────────────────────────────────────────────────────
-APP_NAME="${APP_NAME:-SakshiBar}"
+APP_NAME="${APP_NAME:-LLMBar}"
 APP_DIR="${APP_NAME}.app"
 CONTENTS="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS}/MacOS"
 RESOURCES_DIR="${CONTENTS}/Resources"
 FRAMEWORKS_DIR="${CONTENTS}/Frameworks"
 ENTITLEMENTS="entitlements.plist"
-SHORT_VERSION="${CFBundleShortVersionString:-0.1.0}"
-BUILD_VERSION="${CFBundleVersion:-1}"
-SUFEED_URL="${SUFEED_URL:-https://raw.githubusercontent.com/sriinnu/local-models-bar/main/appcast.xml}"
+SHORT_VERSION="${CFBundleShortVersionString:-0.3.0}"
+BUILD_VERSION="${CFBundleVersion:-4}"   # must stay above the newest appcast item (0.2.0 = build 3)
+SUFEED_URL="${SUFEED_URL:-https://raw.githubusercontent.com/sriinnu/llm-bar/main/appcast.xml}"
 SUPUBLIC_KEY="${SUPUBLIC_KEY:-}"  # populated below if private key is present
 
 # ─── 1. Build the binary ────────────────────────────────────────────────
@@ -97,7 +97,7 @@ if [[ -f "branding/icon.svg" ]]; then
 fi
 
 # Section badge glyphs (popover UI) — same reasoning as icon.svg above.
-for badge in badge-lcp badge-ollama badge-hf; do
+for badge in badge-lcp badge-ollama badge-hf badge-cloud; do
     if [[ -f "branding/${badge}.svg" ]]; then
         cp "branding/${badge}.svg" "${RESOURCES_DIR}/${badge}.svg"
     fi
@@ -148,6 +148,10 @@ if [[ "${MODE}" == "signed" || "${MODE}" == "release" ]] && \
 fi
 
 # ─── 6. Write Info.plist ────────────────────────────────────────────────
+# Dev (ad-hoc) builds must not auto-check: an ad-hoc bundle cannot validate a
+# Developer-ID-signed update, so Sparkle would pop "improperly signed" on every
+# launch. "Check for Updates…" in the footer still works on demand.
+SU_AUTO_CHECKS="true"; [[ "${MODE}" == "dev" ]] && SU_AUTO_CHECKS="false"
 cat > "${CONTENTS}/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -158,13 +162,13 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <key>CFBundleExecutable</key>
     <string>${APP_NAME}</string>
     <key>CFBundleIdentifier</key>
-    <string>com.sriinnu.sakshibar</string>
+    <string>com.sriinnu.llmbar</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
     <string>${APP_NAME}</string>
     <key>CFBundleDisplayName</key>
-    <string>Sakshi</string>
+    <string>LLM Bar</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIconName</key>
@@ -188,7 +192,7 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <key>SUEnableInstallerLauncherService</key>
     <true/>
     <key>SUEnableAutomaticChecks</key>
-    <true/>
+    <${SU_AUTO_CHECKS}/>
     <key>SUScheduledCheckInterval</key>
     <integer>86400</integer>
     <key>NSHumanReadableCopyright</key>
@@ -287,7 +291,7 @@ if [[ "${MODE}" == "release" ]]; then
         exit 4
     fi
     if [[ -z "${RELEASE_DOWNLOAD_URL:-}" ]]; then
-        RELEASE_DOWNLOAD_URL="https://github.com/sriinnu/local-models-bar/releases/download/v{VERSION}/${APP_NAME}-{VERSION}.zip"
+        RELEASE_DOWNLOAD_URL="https://github.com/sriinnu/llm-bar/releases/download/v{VERSION}/${APP_NAME}-{VERSION}.zip"
     fi
     RELEASE_DOWNLOAD_URL="${RELEASE_DOWNLOAD_URL//\{VERSION\}/${SHORT_VERSION}}"
     if [[ "${RELEASE_DOWNLOAD_URL}" != *"${SHORT_VERSION}"* ]]; then

@@ -1,7 +1,7 @@
 // swift-tools-version:5.9
 //
-// SakshiBar — macOS menubar witness for your local LLM models
-// (llama.cpp/lcp, Ollama, Hugging Face cache).
+// LLM Bar — every model you can reach, in the macOS menu bar:
+// local (llama.cpp/lcp, Ollama, Hugging Face cache) and the Claude Code cloud lanes.
 //
 // Quick start:
 //   swift build -c release        # build only
@@ -15,12 +15,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "SakshiBar",
+    name: "LLMBar",
     platforms: [
         .macOS(.v14),
     ],
     products: [
-        .executable(name: "SakshiBar", targets: ["SakshiBar"]),
+        .executable(name: "LLMBar", targets: ["LLMBar"]),
     ],
     dependencies: [
         // Sparkle 2.x — auto-update framework for macOS apps.
@@ -29,11 +29,11 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "SakshiBar",
+            name: "LLMBar",
             dependencies: [
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
-            path: "Sources/SakshiBar",
+            path: "Sources/LLMBar",
             resources: [.copy("Resources")]
         )
     ]
