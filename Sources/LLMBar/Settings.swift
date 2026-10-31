@@ -26,6 +26,8 @@ final class AppSettings: ObservableObject {
     static let laneProbe    = Key(name: "laneProbe",    env: "LLMBAR_LANE_PROBE",     fallback: "")   // "" = next to the resolved config
     static let koshaRegistry = Key(name: "koshaRegistry", env: "LLMBAR_KOSHA_REGISTRY", fallback: NSHomeDirectory() + "/.kosha/registry.json")
     static let terminal     = Key(name: "terminal",     env: "LLMBAR_TERMINAL",       fallback: "Ghostty")
+    static let wtrScript    = Key(name: "wtrScript",    env: "LLMBAR_WTR",            fallback: NSHomeDirectory() + "/.agents/skills/worktree-task-retirement/scripts/wtr.py")
+    static let wtrScanRoots = Key(name: "wtrScanRoots", env: "LLMBAR_WTR_SCAN",       fallback: "")   // "" = only what the skill discovers from your agents' worktrees
 
     func string(_ k: Key) -> String {
         if let e = ProcessInfo.processInfo.environment[k.env], !e.isEmpty { return e }
@@ -66,6 +68,20 @@ final class AppSettings: ObservableObject {
     // descriptions or price lines. Tinted = section headers take their badge colour.
     var compact: Bool { get { d.object(forKey: "compact") as? Bool ?? false } set { objectWillChange.send(); d.set(newValue, forKey: "compact") } }
     var tinted: Bool  { get { d.object(forKey: "tinted")  as? Bool ?? false } set { objectWillChange.send(); d.set(newValue, forKey: "tinted") } }
+    // Look + navigation.
+    var theme: ThemeID { get { ThemeID(rawValue: d.string(forKey: "theme") ?? "") ?? .native } set { objectWillChange.send(); d.set(newValue.rawValue, forKey: "theme") } }
+    var lastTab: String { get { d.string(forKey: "lastTab") ?? "worktrees" } set { objectWillChange.send(); d.set(newValue, forKey: "lastTab") } }
+    /// Show Jev's advisory suggestion on worktrees (when the skill has recorded one).
+    var showAdvice: Bool { get { d.object(forKey: "showAdvice") as? Bool ?? true } set { objectWillChange.send(); d.set(newValue, forKey: "showAdvice") } }
+    /// How worktree lists group: "project", "agent" or "none".
+    var worktreeGroup: String { get { d.string(forKey: "worktreeGroup") ?? "project" } set { objectWillChange.send(); d.set(newValue, forKey: "worktreeGroup") } }
+    var worktreeView: String { get { d.string(forKey: "worktreeView") ?? "lifecycle" } set { objectWillChange.send(); d.set(newValue, forKey: "worktreeView") } }
+    // Worktrees section.
+    var showWorktrees: Bool { get { d.object(forKey: "showWorktrees") as? Bool ?? true } set { objectWillChange.send(); d.set(newValue, forKey: "showWorktrees") } }
+    /// Minutes between background refreshes of the fast listing (stats). Sizes + audit run every 6th refresh.
+    var worktreeRefreshMinutes: Int { get { d.object(forKey: "worktreeRefreshMinutes") as? Int ?? 10 } set { objectWillChange.send(); d.set(newValue, forKey: "worktreeRefreshMinutes") } }
+    /// Red dot on the menu-bar icon when a worktree is ready to retire or a repo is over its cap.
+    var worktreeBadge: Bool { get { d.object(forKey: "worktreeBadge") as? Bool ?? false } set { objectWillChange.send(); d.set(newValue, forKey: "worktreeBadge") } }
 
 
     func shows(group: String) -> Bool {
@@ -78,7 +94,9 @@ final class AppSettings: ObservableObject {
     func resetAll() {
         objectWillChange.send()
         for k in ["lcpDir","lcpServer","lcpPidfile","hfCache","ollamaHost","claudeConfig","laneStatus","laneProbe","koshaRegistry","terminal",
-                  "showPaid","showCheap","showFree","showPricing","probeHour","compact","tinted"] {
+                  "showPaid","showCheap","showFree","showPricing","probeHour","compact","tinted",
+                  "wtrScript","wtrScanRoots","showWorktrees","worktreeRefreshMinutes","worktreeBadge",
+                  "theme","lastTab","worktreeView","worktreeGroup","showAdvice"] {
             d.removeObject(forKey: k)
         }
     }
@@ -168,131 +186,21 @@ enum AppWindows {
 
     static func showSettings(state: AppState) {
         if settingsWindow == nil {
-            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 560, height: 620),
-                             styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            // A sidebar settings window (System Settings style): full-size content under a unified
+            // toolbar so the sidebar gets its translucent material.
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 540),
+                             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                             backing: .buffered, defer: false)
             w.title = "LLM Bar Settings"
+            w.toolbar = NSToolbar(identifier: "settings")
+            w.toolbarStyle = .unified
             w.isReleasedWhenClosed = false
+            w.minSize = NSSize(width: 700, height: 480)
             w.contentView = NSHostingView(rootView: SettingsView(settings: AppSettings.shared, state: state))
             w.center()
             settingsWindow = w
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
-    }
-}
-
-struct SettingsView: View {
-    @ObservedObject var settings: AppSettings
-    let state: AppState
-    @State private var agentMessage = ""
-    @State private var koshaBusy = false
-    @State private var koshaMessage = ""
-    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
-
-    var body: some View {
-        Form {
-            Section("Local models") {
-                pathField("llama.cpp models dir", AppSettings.lcpDir)
-                pathField("llama-server binary", AppSettings.lcpServer)
-                pathField("llama-server pidfile", AppSettings.lcpPidfile)
-                pathField("Hugging Face cache", AppSettings.hfCache)
-                pathField("Ollama API host", AppSettings.ollamaHost)
-            }
-            Section("Cloud lanes") {
-                pathField("Claude Code config (lane list)", AppSettings.claudeConfig)
-                pathField("Lane status cache", AppSettings.laneStatus)
-                pathField("Probe script (blank = next to config)", AppSettings.laneProbe)
-                Picker("Open lanes in", selection: Binding(
-                    get: { settings.string(AppSettings.terminal) },
-                    set: { settings.set(AppSettings.terminal, $0) })) {
-                    Text("Ghostty").tag("Ghostty")
-                    Text("Terminal.app").tag("Terminal")
-                }
-                Toggle("Show paid lanes", isOn: Binding(get: { settings.showPaid }, set: { settings.showPaid = $0 }))
-                Toggle("Show cheap OpenRouter lanes", isOn: Binding(get: { settings.showCheap }, set: { settings.showCheap = $0 }))
-                Toggle("Show free-tier lanes", isOn: Binding(get: { settings.showFree }, set: { settings.showFree = $0 }))
-            }
-            Section("Pricing (kosha)") {
-                pathField("kosha registry", AppSettings.koshaRegistry)
-                Toggle("Show model price under each lane", isOn: Binding(get: { settings.showPricing }, set: { settings.showPricing = $0 }))
-                HStack(spacing: 8) {
-                    Text(koshaMessage.isEmpty ? KoshaRegistry.shared.summary : koshaMessage)
-                        .font(.system(size: 10.5)).foregroundStyle(.secondary)
-                        .lineLimit(2)
-                    Spacer()
-                    if koshaBusy {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Button(action: {
-                            koshaBusy = true
-                            koshaMessage = "running kosha update + enrich…"
-                            runKoshaUpdate { ok, msg in
-                                koshaBusy = false
-                                koshaMessage = (ok ? "✓ " : "✗ ") + msg
-                                state.refresh()
-                            }
-                        }) {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                        .help("Run `kosha update` then `kosha enrich` (re-discover providers, refresh prices)")
-                    }
-                }
-            }
-            Section("Look") {
-                Toggle("Compact rows (no descriptions or prices)", isOn: Binding(get: { settings.compact }, set: { settings.compact = $0 }))
-                Toggle("Tinted section headers", isOn: Binding(get: { settings.tinted }, set: { settings.tinted = $0 }))
-            }
-            Section("App") {
-                Toggle("Launch at login", isOn: Binding(
-                    get: { launchAtLogin },
-                    set: { on in
-                        do {
-                            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
-                            launchAtLogin = SMAppService.mainApp.status == .enabled
-                        } catch {
-                            agentMessage = "launch at login: \(error.localizedDescription)"
-                        }
-                    }))
-            }
-            Section("Daily probe (launchd)") {
-                Stepper("Run at \(String(format: "%02d:00", settings.probeHour)) and at login",
-                        value: Binding(get: { settings.probeHour }, set: { settings.probeHour = $0 }), in: 0...23)
-                HStack {
-                    Button(laneProbeAgentInstalled() ? "Reinstall agent" : "Install agent") {
-                        agentMessage = installLaneProbeAgent(hour: settings.probeHour) ?? "installed: \(LANE_PROBE_LAUNCHD_LABEL)"
-                        state.refresh()
-                    }
-                    if laneProbeAgentInstalled() {
-                        Button("Remove agent") { removeLaneProbeAgent(); agentMessage = "removed"; state.refresh() }
-                    }
-                    Button("Probe now") { state.refreshLanes(); agentMessage = "probing…" }
-                }
-                if !agentMessage.isEmpty {
-                    Text(agentMessage).font(.system(size: 10.5)).foregroundStyle(.secondary)
-                }
-            }
-            Section {
-                HStack {
-                    Button("Reset to defaults") { settings.resetAll(); state.refresh() }
-                    Spacer()
-                    Text("Environment variables (LLMBAR_*) override these.")
-                        .font(.system(size: 10.5)).foregroundStyle(.secondary)
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .frame(width: 560)
-        .onDisappear { state.refresh() }
-    }
-
-    @ViewBuilder
-    private func pathField(_ label: String, _ key: AppSettings.Key) -> some View {
-        let overridden = settings.isEnvOverridden(key)
-        TextField(label, text: Binding(
-            get: { settings.string(key) },
-            set: { settings.set(key, $0) }))
-            .disabled(overridden)
-            .help(overridden ? "Set by \(key.env) in the environment" : "Default: \(key.fallback)")
-            .font(.system(size: 11, design: .monospaced))
     }
 }

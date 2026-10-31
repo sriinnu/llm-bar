@@ -1,29 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- LLM Bar app icon on Apple's macOS grid: 824×824 body, 100 pt margin, ~185 corner radius. -->
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7C6CFF"/>
-      <stop offset="1" stop-color="#22D3EE"/>
+    <linearGradient id="body" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2E2E31"/>
+      <stop offset="1" stop-color="#0B0B0C"/>
     </linearGradient>
+    <linearGradient id="rim" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.02"/>
+    </linearGradient>
+    <filter id="drop" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
   </defs>
-
-  <!-- macOS-style rounded-square base, matches the system icon mask convention -->
-  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="url(#bg)"/>
-
-  <!-- Chip + pins glyph, scaled up and centered, white for contrast against the gradient -->
-  <g transform="translate(512 512)">
-    <rect x="-155" y="-155" width="310" height="310" rx="62" fill="none" stroke="white" stroke-width="34"/>
-    <circle cx="0" cy="0" r="58" fill="none" stroke="white" stroke-opacity="0.9" stroke-width="26"/>
-
-    <!-- top pins -->
-    <line x1="-72" y1="-155" x2="-72" y2="-268" stroke="white" stroke-width="34" stroke-linecap="round"/>
-    <line x1="72" y1="-155" x2="72" y2="-268" stroke="white" stroke-width="34" stroke-linecap="round"/>
-
-    <!-- bottom pins -->
-    <line x1="-72" y1="155" x2="-72" y2="268" stroke="white" stroke-width="34" stroke-linecap="round"/>
-    <line x1="72" y1="155" x2="72" y2="268" stroke="white" stroke-width="34" stroke-linecap="round"/>
-
-    <!-- left / right pins -->
-    <line x1="-155" y1="0" x2="-268" y2="0" stroke="white" stroke-width="34" stroke-linecap="round"/>
-    <line x1="155" y1="0" x2="268" y2="0" stroke="white" stroke-width="34" stroke-linecap="round"/>
-  </g>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#body)" filter="url(#drop)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="183.5" fill="none" stroke="url(#rim)" stroke-width="3"/>
+  <path d="M352 392l150 120-150 120" fill="none" stroke="#64D2FF" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="640" cy="608" r="56" fill="#34C759"/>
 </svg>

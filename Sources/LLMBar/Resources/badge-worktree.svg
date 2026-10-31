@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34D399"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="40" height="40" rx="10" fill="url(#g)"/>
+  <!-- worktree: a trunk with one branch forking off it -->
+  <g fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" opacity="0.95">
+    <path d="M 14 10 L 14 30"/>
+    <path d="M 26 15 C 26 22 14 21 14 27"/>
+  </g>
+  <g fill="white" opacity="0.95">
+    <circle cx="14" cy="10" r="3.2"/>
+    <circle cx="14" cy="30" r="3.2"/>
+    <circle cx="26" cy="13" r="3.2"/>
+  </g>
+</svg>

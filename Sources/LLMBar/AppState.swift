@@ -25,6 +25,23 @@ final class AppState: ObservableObject {
     @Published var laneProbeRunning = false
     @Published var laneProbeAvailable = FileManager.default.isReadableFile(atPath: LANE_PROBE_PATH)
 
+    // Worktrees: refreshed in the background on their own timer, never in the 1.5 s popover poll.
+    @Published var worktreeRows: [WorktreeRow] = []
+    @Published var worktreeError: String? = nil
+    @Published var worktreeLoading = false
+    @Published var worktreesLoadedAt: Date? = nil
+    @Published var worktreeSizesAt: Date? = nil
+    /// Last 14 days of samples (see History.swift); drives the Agents timeline and the trend.
+    @Published var worktreeHistory: [HistorySample] = []
+    private var worktreeTimer: Timer?
+    private var worktreeTicks = 0
+    /// Slow fields (--sizes, --audit) from the last deep pass, keyed by worktree path.
+    private var deepFields: [String: WorktreeRow] = [:]
+    var onWorktreesChanged: (() -> Void)?
+
+    var worktreeRepos: [WorktreeRepo] { groupWorktrees(worktreeRows) }
+    var worktreeReadyCount: Int { worktreeRows.filter(\.isReady).count }
+
     private var pollTimer: Timer?
 
     func refresh() {
@@ -99,6 +116,67 @@ final class AppState: ObservableObject {
     func stopPolling() {
         pollTimer?.invalidate()
         pollTimer = nil
+    }
+
+    // MARK: worktrees
+
+    /// Starts the background timer; the first tick is a deep pass so sizes appear early.
+    func restartWorktreeTimer() {
+        worktreeTimer?.invalidate()
+        guard AppSettings.shared.showWorktrees else { return }
+        let minutes = max(1, AppSettings.shared.worktreeRefreshMinutes)
+        worktreeTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(minutes * 60), repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.worktreeTick() }
+        }
+        worktreeTimer?.tolerance = 30
+        if worktreesLoadedAt == nil { refreshWorktrees(deep: true) }
+    }
+
+    private func worktreeTick() {
+        worktreeTicks += 1
+        refreshWorktrees(deep: worktreeTicks % 6 == 0)
+    }
+
+    /// Popover opened: refresh the fast listing if it is more than a minute old.
+    func refreshWorktreesIfStale() {
+        guard AppSettings.shared.showWorktrees else { return }
+        if let at = worktreesLoadedAt, Date().timeIntervalSince(at) < 60 { return }
+        refreshWorktrees(deep: false)
+    }
+
+    func refreshWorktrees(deep: Bool) {
+        guard !worktreeLoading else { return }
+        worktreeLoading = true
+        loadWorktrees(deep: deep) { [weak self] result in
+            guard let self else { return }
+            self.worktreeLoading = false
+            switch result {
+            case .success(let rows):
+                if deep {
+                    self.deepFields = Dictionary(rows.map { ($0.worktree, $0) }, uniquingKeysWith: { a, _ in a })
+                    self.worktreeSizesAt = Date()
+                }
+                self.worktreeRows = rows.map { self.withDeepFields($0) }
+                WorktreeHistory.record(self.worktreeRows)
+                self.worktreeHistory = WorktreeHistory.load(since: Date().addingTimeInterval(-Double(WorktreeHistory.keepDays) * 86400))
+                self.worktreeError = nil
+                self.worktreesLoadedAt = Date()
+            case .failure(let e):
+                self.worktreeError = e.description
+            }
+            self.onWorktreesChanged?()
+        }
+    }
+
+    /// A fast row carries no size or verdict; reuse the last deep pass's values for the same path.
+    private func withDeepFields(_ r: WorktreeRow) -> WorktreeRow {
+        guard r.size_bytes == nil, let d = deepFields[r.worktree] else { return r }
+        return WorktreeRow(name: r.name, worktree: r.worktree, repo: r.repo, repo_name: r.repo_name, branch: r.branch,
+                           base: r.base, agents: r.agents, last_build: r.last_build, purpose: r.purpose, task: r.task,
+                           status: r.status, verdict: r.verdict ?? d.verdict, main_checkout: r.main_checkout, origin: r.origin, advice: r.advice,
+                           head_ts: r.head_ts, against: r.against, fetched_ts: r.fetched_ts, ahead: r.ahead, behind: r.behind,
+                           dirty: r.dirty, live: r.live, idle_days: r.idle_days, agents_live: r.agents_live,
+                           size_bytes: d.size_bytes, build_bytes: d.build_bytes)
     }
 
     func startLcp(_ model: ModelEntry) {

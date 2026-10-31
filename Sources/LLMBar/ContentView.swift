@@ -7,7 +7,9 @@ import Sparkle
 func loadBadge(_ name: String) -> Image {
     let url = Bundle.main.url(forResource: name, withExtension: "svg")
         ?? Bundle.module.url(forResource: name, withExtension: "svg")
+        ?? Bundle.module.url(forResource: name, withExtension: "svg", subdirectory: "Resources")   // `swift run` nests .copy("Resources")
     if let url, let ns = NSImage(contentsOf: url) {
+        ns.isTemplate = (name == "icon")   // the app mark is a template: it takes the text colour
         return Image(nsImage: ns)
     }
     return Image(systemName: "square.grid.2x2")
@@ -19,24 +21,49 @@ struct ContentView: View {
     let updaterController: SPUStandardUpdaterController
     var onQuit: () -> Void
 
+    enum Tab: String, CaseIterable { case lanes, models, worktrees }
+
+    private var tab: Tab {
+        let t = Tab(rawValue: settings.lastTab) ?? .worktrees
+        return (t == .worktrees && !settings.showWorktrees) ? .lanes : t
+    }
+    private var tabs: [Tab] { settings.showWorktrees ? Tab.allCases : [.lanes, .models] }
+
     var body: some View {
+        let theme = Theme.of(settings.theme)
         VStack(spacing: 0) {
             header
-            Divider()
+            TabBar(tabs: tabs, current: tab, badges: badges, select: { settings.lastTab = $0.rawValue })
+            Hairline()
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    cloudSection
-                    lcpSection
-                    ollamaSection
-                    hfSection
+                    switch tab {
+                    case .lanes: cloudSection
+                    case .models:
+                        lcpSection
+                        ollamaSection
+                        hfSection
+                    case .worktrees: WorktreesTab(state: state)
+                    }
                 }
                 .padding(.bottom, 6)
             }
-            Divider()
+            .frame(minHeight: 380, maxHeight: 560)
+            Hairline()
             footer
         }
-        .frame(width: 340)
-        .background(.regularMaterial)
+        .frame(width: 380)
+        .themed(theme)
+    }
+
+    private var badges: [Tab: (String, Bool)] {
+        var b: [Tab: (String, Bool)] = [:]
+        let lanes = state.laneAttentionCount
+        if lanes > 0 { b[.lanes] = ("\(lanes)", true) }
+        let ready = state.worktreeReadyCount
+        let total = state.worktreeRows.filter { !$0.isMain && !$0.isStale }.count
+        if total > 0 { b[.worktrees] = (ready > 0 ? "\(total) · \(ready)" : "\(total)", false) }
+        return b
     }
 
     // MARK: header / footer
@@ -53,9 +80,9 @@ struct ContentView: View {
                 .resizable()
                 .frame(width: 18, height: 18)
             Text("LLM Bar")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.headline)
             Text(appVersion)
-                .font(.system(size: 10))
+                .font(.footnote)
                 .foregroundStyle(.secondary)
             Spacer()
             Button(action: { state.refresh() }) {
@@ -71,27 +98,45 @@ struct ContentView: View {
             .keyboardShortcut(",", modifiers: .command)
             .help("Settings (⌘,)")
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         .padding(.vertical, 9)
     }
 
+    // Status bar: who made it (and how to support that) on the left, app actions as icons on the right.
     private var footer: some View {
-        HStack(spacing: 12) {
-            Button("Check for Updates…") { updaterController.checkForUpdates(nil) }
-                .buttonStyle(.borderless)
-                .font(.system(size: 11))
-                .disabled(!updaterController.updater.canCheckForUpdates)
+        HStack(spacing: 2) {
+            Link(destination: URL(string: "https://github.com/sriinnu")!) {
+                HStack(spacing: 4) {
+                    Text("Sriinnu").font(.subheadline.weight(.medium))
+                    Image(systemName: "arrow.up.right").font(.caption2.weight(.semibold))
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 6).padding(.vertical, 4)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("github.com/sriinnu")
+            Link(destination: URL(string: "https://github.com/sponsors/sriinnu")!) {
+                Image(systemName: "heart.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(Color(nsColor: .systemPink))
+                    .frame(width: 26, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Sponsor LLM Bar on GitHub")
+            .accessibilityLabel("Sponsor")
             Spacer()
-            Button("About") { AppWindows.showAbout() }
-                .buttonStyle(.borderless)
-                .font(.system(size: 11))
-            Button("Quit") { onQuit() }
-                .buttonStyle(.borderless)
-                .font(.system(size: 11))
+            FooterIcon(symbol: "arrow.triangle.2.circlepath", help: "Check for Updates") {
+                updaterController.checkForUpdates(nil)
+            }
+            .disabled(!updaterController.updater.canCheckForUpdates)
+            FooterIcon(symbol: "info.circle", help: "About LLM Bar") { AppWindows.showAbout() }
+            FooterIcon(symbol: "power", help: "Quit LLM Bar (⌘Q)") { onQuit() }
                 .keyboardShortcut("q", modifiers: .command)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
     }
 
     // MARK: sections
@@ -109,20 +154,20 @@ struct ContentView: View {
         return SectionBlock(badge: "badge-cloud", title: "Cloud lanes", trailing: trailing) {
             HStack(spacing: 6) {
                 Text(state.laneProbedAt.map { "probed \(relativeAge($0))" } ?? "not probed yet")
-                    .font(.system(size: 10.5))
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Spacer()
                 if state.laneProbeRunning {
                     ProgressView().controlSize(.mini)
                 } else if state.laneProbeAvailable {
                     Button(action: { state.refreshLanes() }) {
-                        Image(systemName: "antenna.radiowaves.left.and.right").font(.system(size: 10))
+                        Image(systemName: "antenna.radiowaves.left.and.right").font(.footnote)
                     }
                     .buttonStyle(.borderless)
                     .help("Probe every lane now (one 8-token request each)")
                 }
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 16)
             .padding(.vertical, 5)
             if lanes.isEmpty {
                 EmptyRow(text: "No lanes found — expected an lcp-help block in \(CLAUDE_CONFIG_PATH)")
@@ -144,9 +189,9 @@ struct ContentView: View {
                 EmptyRow(text: "No GGUF models in \((LCP_MODELS_DIR as NSString).abbreviatingWithTildeInPath)")
             } else {
                 ServerControlRow(state: state.lcpState, runningLabel: "llama-server · port \(LCP_PORT)", onStop: { state.stopLcp() })
-                    .padding(.horizontal, 14).padding(.vertical, 4)
+                    .padding(.horizontal, 16).padding(.vertical, 4)
                 Rows(state.lcpModels) { model in
-                    ModelRow(model: model,
+                    ModelRow(model: model, source: .lcp,
                              isActive: state.lcpActiveModelPath == model.path && isRunningOrStarting(state.lcpState),
                              canStart: model.path != nil,
                              onStart: { state.startLcp(model) },
@@ -160,14 +205,14 @@ struct ContentView: View {
         SectionBlock(badge: "badge-ollama", title: "Ollama", trailing: subtitle(for: state.ollamaModels)) {
             AppControlRow(state: state.ollamaAppState, label: "Ollama.app",
                           onStart: { state.startOllama() }, onStop: { state.stopOllama() })
-                .padding(.horizontal, 14).padding(.vertical, 4)
+                .padding(.horizontal, 16).padding(.vertical, 4)
             if !ollamaAppRunning() {
                 EmptyRow(text: "Not running — start it to see models")
             } else if state.ollamaModels.isEmpty {
                 EmptyRow(text: "No Ollama models")
             } else {
                 Rows(state.ollamaModels) { model in
-                    ModelRow(model: model, isActive: false, canStart: false, onStart: {},
+                    ModelRow(model: model, source: .ollama, isActive: false, canStart: false, onStart: {},
                              onReveal: { copyToClipboard(model.name) })
                 }
             }
@@ -180,7 +225,7 @@ struct ContentView: View {
                 EmptyRow(text: "Cache empty")
             } else {
                 Rows(state.hfModels) { model in
-                    ModelRow(model: model, isActive: false, canStart: false, onStart: {},
+                    ModelRow(model: model, source: .hf, isActive: false, canStart: false, onStart: {},
                              onReveal: { revealInFinder(model.path) })
                 }
             }
@@ -217,7 +262,7 @@ struct ContentView: View {
 // MARK: - Section + rows
 
 /// Badge gradient start colours, for the tinted look.
-private let sectionTints: [String: Color] = [
+let sectionTints: [String: Color] = [
     "badge-cloud": Color(red: 0.18, green: 0.71, blue: 1.00),   // #2FB4FF
     "badge-lcp": Color(red: 0.49, green: 0.42, blue: 1.00),     // #7C6CFF
     "badge-ollama": Color(red: 0.13, green: 0.83, blue: 0.93),  // #22D3EE
@@ -225,7 +270,7 @@ private let sectionTints: [String: Color] = [
 ]
 
 /// A section: small-caps header with a tiny badge and a trailing count, then its rows.
-private struct SectionBlock<Content: View>: View {
+struct SectionBlock<Content: View>: View {
     let badge: String
     let title: String
     let trailing: String
@@ -245,17 +290,17 @@ private struct SectionBlock<Content: View>: View {
                     .frame(width: 13, height: 13)
                     .clipShape(RoundedRectangle(cornerRadius: 3.5, style: .continuous))
                 Text(title.uppercased())
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.footnote.weight(.semibold))
                     .tracking(0.6)
                     .foregroundStyle(headerStyle)
                 Spacer()
                 if !trailing.isEmpty {
                     Text(trailing)
-                        .font(.system(size: 10))
+                        .font(.footnote)
                         .foregroundStyle(headerStyle)
                 }
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 16)
             .padding(.top, settings.compact ? 9 : 12)
             .padding(.bottom, settings.compact ? 2 : 4)
             content
@@ -264,7 +309,7 @@ private struct SectionBlock<Content: View>: View {
 }
 
 /// Rows separated by hairlines, inset like a macOS menu.
-private struct Rows<Item: Identifiable, Row: View>: View {
+struct Rows<Item: Identifiable, Row: View>: View {
     let items: [Item]
     let row: (Item) -> Row
     @ObservedObject private var settings = AppSettings.shared
@@ -274,10 +319,10 @@ private struct Rows<Item: Identifiable, Row: View>: View {
         VStack(spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
                 if i > 0 {
-                    Divider().padding(.leading, 14).opacity(0.5)
+                    Divider().padding(.leading, 16).opacity(0.5)
                 }
                 row(item)
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, 16)
                     .padding(.vertical, settings.compact ? 3 : 5)
             }
         }
@@ -298,12 +343,10 @@ private struct LaneRow: View {
                 .help(statusHelp)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
-                    Text(lane.name)
-                        .font(.system(size: 11.5, weight: .medium))
-                        .lineLimit(1)
+                    TruncatedName(text: lane.name, font: .body.weight(.medium), mode: .tail)
                     if showDescription {
                         Text(lane.description)
-                            .font(.system(size: 10.5))
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                             .truncationMode(.tail)
@@ -312,12 +355,12 @@ private struct LaneRow: View {
                 if showPricing, let s = status, !s.model.isEmpty {
                     HStack(spacing: 4) {
                         Text(s.model)
-                            .font(.system(size: 9.5, design: .monospaced))
+                            .font(.footnote.monospaced())
                             .lineLimit(1)
                             .truncationMode(.middle)
                         if let p = KoshaRegistry.shared.price(model: s.model, provider: s.kosha_provider) {
                             Text("· " + formatPrice(p))
-                                .font(.system(size: 9.5))
+                                .font(.footnote)
                                 .lineLimit(1)
                         }
                     }
@@ -327,17 +370,17 @@ private struct LaneRow: View {
             Spacer(minLength: 6)
             if let s = status, s.status == "ok", s.ms > 0 {
                 Text("\(s.ms) ms")
-                    .font(.system(size: 10))
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.top, 2)
             } else if let s = status, s.status != "ok" {
                 Text(s.status)
-                    .font(.system(size: 10))
+                    .font(.footnote)
                     .foregroundStyle(dotColor)
                     .padding(.top, 2)
             }
             Button(action: onLaunch) {
-                Image(systemName: "terminal").font(.system(size: 10))
+                Image(systemName: "terminal").font(.footnote)
             }
             .buttonStyle(.borderless)
             .help("Open `\(lane.name)` in \(TERMINAL_APP)")
@@ -363,50 +406,85 @@ private struct LaneRow: View {
     }
 }
 
+/// Where a model lives decides how it opens: llama.cpp GGUFs through `lcp`, Ollama models through
+/// Ollama's own Claude Code integration, Hugging Face snapshots just reveal.
+enum ModelSource { case lcp, ollama, hf }
+
 private struct ModelRow: View {
     let model: ModelEntry
+    let source: ModelSource
     let isActive: Bool
     let canStart: Bool
     let onStart: () -> Void
     let onReveal: () -> Void
 
+    /// `lcp` takes a name hint: the GGUF file name without extension.
+    private var lcpHint: String { ((model.path ?? model.name) as NSString).lastPathComponent.replacingOccurrences(of: ".gguf", with: "") }
+
     var body: some View {
-        HStack(spacing: 6) {
-            Text(model.name)
-                .font(.system(size: 11.5))
-                .lineLimit(1)
-                .truncationMode(.middle)
+        HStack(spacing: 8) {
+            TruncatedName(text: model.name, font: .body)
             Spacer(minLength: 6)
             if model.sizeBytes > 0 {
                 Text(byteFormatter.string(fromByteCount: model.sizeBytes))
-                    .font(.system(size: 10))
+                    .font(.footnote)
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
             if model.isCloud {
-                Image(systemName: "cloud").font(.system(size: 10)).foregroundStyle(.secondary)
+                Image(systemName: "cloud").font(.footnote).foregroundStyle(.secondary)
+            }
+            if source != .hf && !model.isCloud {
+                Button(action: openInClaudeCode) {
+                    Image(systemName: "terminal").font(.footnote)
+                }
+                .buttonStyle(.borderless)
+                .help("Open in Claude Code")
             }
             if canStart {
                 Button(action: onStart) {
-                    Image(systemName: isActive ? "waveform" : "play.fill").font(.system(size: 10))
+                    Image(systemName: isActive ? "waveform" : "play.fill").font(.footnote)
                 }
                 .buttonStyle(.borderless)
                 .disabled(isActive)
-                .help(isActive ? "Running" : "Start with this model")
+                .help(isActive ? "Running" : "Start llama-server with this model")
             }
         }
         .contentShape(Rectangle())
         .onTapGesture(count: 1) { onReveal() }
+        .contextMenu {
+            if source != .hf && !model.isCloud {
+                Button("Open in Claude Code") { openInClaudeCode() }
+            }
+            if source == .ollama {
+                Button("Chat in \(TERMINAL_APP)") { runInTerminal("ollama run \(shellQuote(model.name))") }
+            }
+            Divider()
+            if let path = model.path {
+                Button("Copy Path") { copy(path) }
+                Button("Reveal in Finder") { NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "") }
+            }
+            Button("Copy Name") { copy(model.name) }
+        }
+    }
+
+    private func openInClaudeCode() {
+        switch source {
+        case .lcp: runInTerminal("lcp \(shellQuote(lcpHint))")
+        case .ollama: runInTerminal("ollama launch claude --model \(shellQuote(model.name))")
+        case .hf: break
+        }
     }
 }
 
-private struct EmptyRow: View {
+struct EmptyRow: View {
     let text: String
     var body: some View {
         Text(text)
-            .font(.system(size: 10.5))
+            .font(.subheadline)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 16)
             .padding(.vertical, 5)
     }
 }
@@ -419,10 +497,10 @@ private struct ServerControlRow: View {
     var body: some View {
         HStack(spacing: 6) {
             StatusDot(color: color)
-            Text(statusText).font(.system(size: 10.5)).foregroundStyle(.secondary)
+            Text(statusText).font(.subheadline).foregroundStyle(.secondary)
             Spacer()
             if case .running = state {
-                Button(action: onStop) { Image(systemName: "stop.fill").font(.system(size: 10)) }
+                Button(action: onStop) { Image(systemName: "stop.fill").font(.footnote) }
                     .buttonStyle(.borderless)
                     .help("Stop server")
             }
@@ -448,14 +526,14 @@ private struct AppControlRow: View {
     var body: some View {
         HStack(spacing: 6) {
             StatusDot(color: serverColor(state))
-            Text(label + " " + statusText).font(.system(size: 10.5)).foregroundStyle(.secondary)
+            Text(label + " " + statusText).font(.subheadline).foregroundStyle(.secondary)
             Spacer()
             switch state {
             case .running:
-                Button(action: onStop) { Image(systemName: "stop.fill").font(.system(size: 10)) }
+                Button(action: onStop) { Image(systemName: "stop.fill").font(.footnote) }
                     .buttonStyle(.borderless).help("Quit Ollama")
             default:
-                Button(action: onStart) { Image(systemName: "play.fill").font(.system(size: 10)) }
+                Button(action: onStart) { Image(systemName: "play.fill").font(.footnote) }
                     .buttonStyle(.borderless).help("Launch Ollama")
             }
         }
@@ -479,9 +557,123 @@ private func serverColor(_ s: ServerState) -> Color {
     }
 }
 
-private struct StatusDot: View {
+struct StatusDot: View {
     let color: Color
     var body: some View {
         Circle().fill(color).frame(width: 7, height: 7)
+    }
+}
+
+// MARK: - Tab bar (one structure, three looks)
+
+struct TabBar: View {
+    let tabs: [ContentView.Tab]
+    let current: ContentView.Tab
+    let badges: [ContentView.Tab: (String, Bool)]   // text, isAlert
+    let select: (ContentView.Tab) -> Void
+    @Environment(\.theme) private var theme
+
+    private func title(_ t: ContentView.Tab) -> String {
+        switch t {
+        case .lanes: return "Lanes"
+        case .models: return "Models"
+        case .worktrees: return "Worktrees"
+        }
+    }
+
+    var body: some View {
+        Group {
+            switch theme.id {
+            case .native, .slate, .midnight:
+                Picker("", selection: Binding(get: { current }, set: { select($0) })) {
+                    ForEach(tabs, id: \.self) { t in
+                        Text(badges[t].map { "\(title(t)) \($0.0)" } ?? title(t)).tag(t)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
+                .background {
+                    // ⌘1–⌘3 for the segmented control too
+                    HStack {
+                        ForEach(Array(tabs.enumerated()), id: \.element) { i, t in
+                            Button("") { select(t) }.keyboardShortcut(KeyEquivalent(Character("\(i + 1)")), modifiers: .command)
+                        }
+                    }.opacity(0).allowsHitTesting(false)
+                }
+            case .terminal:
+                HStack(spacing: 16) {
+                    ForEach(Array(tabs.enumerated()), id: \.element) { i, t in
+                        Button(action: { select(t) }) {
+                            HStack(spacing: 4) {
+                                Text("\(i + 1)").foregroundStyle(t == current ? theme.accent : Color.secondary.opacity(0.6))
+                                Text(title(t).lowercased()).fontWeight(t == current ? .bold : .regular)
+                                    .foregroundStyle(t == current ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                                badge(t)
+                            }
+                            .font(.body)
+                            .padding(.vertical, 4)
+                            .overlay(alignment: .bottom) { if t == current { Rectangle().fill(theme.accent).frame(height: 2).offset(y: 4) } }
+                        }
+                        .buttonStyle(.plain)
+                        .keyboardShortcut(KeyEquivalent(Character("\(i + 1)")), modifiers: .command)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+            case .editorial:
+                HStack(alignment: .firstTextBaseline, spacing: 14) {
+                    ForEach(Array(tabs.enumerated()), id: \.element) { i, t in
+                        Button(action: { select(t) }) {
+                            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                                Text(title(t))
+                                    .font(.system(size: 15, weight: t == current ? .heavy : .medium))
+                                    .foregroundStyle(t == current ? Color.primary : Color.secondary)
+                                    .underline(t == current, color: .primary)
+                                if let (text, alert) = badges[t], alert {
+                                    Text(text).font(.caption2.weight(.bold)).foregroundStyle(theme.accent).baselineOffset(6)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .keyboardShortcut(KeyEquivalent(Character("\(i + 1)")), modifiers: .command)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func badge(_ t: ContentView.Tab) -> some View {
+        if let (text, alert) = badges[t] {
+            Text(text)
+                .font(.footnote.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(alert ? theme.danger : Color.secondary)
+        }
+    }
+}
+
+
+/// A borderless icon button for the status bar: 26×22 hit area, tooltip, accessibility label.
+struct FooterIcon: View {
+    let symbol: String
+    let help: String
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.subheadline)
+                .frame(width: 26, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .help(help)
+        .accessibilityLabel(help)
     }
 }
