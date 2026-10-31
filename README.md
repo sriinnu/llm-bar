@@ -1,6 +1,18 @@
-# LLM Bar
+<p align="center">
+  <img src="branding/appicon.svg" width="128" height="128" alt="LLM Bar app icon">
+</p>
 
-**Every model you can reach, and every worktree your agents made, in the macOS menu bar.**
+<h1 align="center">LLM Bar</h1>
+
+<p align="center"><strong>Every model you can reach, and every worktree your agents made, in the macOS menu bar.</strong></p>
+
+<p align="center">
+  <a href="https://github.com/sriinnu/llm-bar/releases/latest"><img src="https://img.shields.io/github/v/release/sriinnu/llm-bar?label=release" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-black?logo=apple" alt="macOS 14 or later">
+  <img src="https://img.shields.io/badge/signed-Developer%20ID%20%C2%B7%20notarized-2ea44f" alt="Developer ID signed and notarized">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-blue" alt="MIT licence"></a>
+  <a href="https://github.com/sponsors/sriinnu"><img src="https://img.shields.io/badge/sponsor-%E2%99%A5-ea4aaa" alt="Sponsor"></a>
+</p>
 
 LLM Bar is a native menu bar app for people who run coding agents all day. One click shows your
 local models (llama.cpp, Ollama, Hugging Face), your Claude Code provider lanes with live health,
