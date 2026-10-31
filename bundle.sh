@@ -20,8 +20,8 @@
 #   RELEASE_DOWNLOAD_URL         # public URL where the .zip will be hosted
 #
 # Optional:
-#   CFBundleShortVersionString   # semver, default 0.5.1
-#   CFBundleVersion              # build number (integer), default 7 (> last appcast build)
+#   CFBundleShortVersionString   # semver, default 0.6.0
+#   CFBundleVersion              # build number (integer), default 8 (> last appcast build)
 #   APP_NAME                     # default "LLMBar"
 #
 # Outputs:
@@ -55,8 +55,8 @@ MACOS_DIR="${CONTENTS}/MacOS"
 RESOURCES_DIR="${CONTENTS}/Resources"
 FRAMEWORKS_DIR="${CONTENTS}/Frameworks"
 ENTITLEMENTS="entitlements.plist"
-SHORT_VERSION="${CFBundleShortVersionString:-0.5.1}"
-BUILD_VERSION="${CFBundleVersion:-7}"   # must stay above the newest appcast item (0.5.0 = build 6)
+SHORT_VERSION="${CFBundleShortVersionString:-0.6.0}"
+BUILD_VERSION="${CFBundleVersion:-8}"   # must stay above the newest appcast item (0.5.1 = build 7)
 SUFEED_URL="${SUFEED_URL:-https://raw.githubusercontent.com/sriinnu/llm-bar/main/appcast.xml}"
 SUPUBLIC_KEY="${SUPUBLIC_KEY:-}"  # populated below if private key is present
 
@@ -97,7 +97,7 @@ if [[ -f "branding/icon.svg" ]]; then
 fi
 
 # Section badge glyphs (popover UI) — same reasoning as icon.svg above.
-for badge in badge-lcp badge-ollama badge-hf badge-cloud; do
+for badge in badge-lcp badge-ollama badge-hf badge-cloud badge-worktree; do
     if [[ -f "branding/${badge}.svg" ]]; then
         cp "branding/${badge}.svg" "${RESOURCES_DIR}/${badge}.svg"
     fi
@@ -265,7 +265,9 @@ echo "==> Built ${APP_DIR} ($(du -sh "${APP_DIR}" | cut -f1))"
 # ─── 8. Notarize + staple (release only) ────────────────────────────────
 if [[ "${MODE}" == "release" ]]; then
     ACCOUNT_FILE="$HOME/Library/Mobile Documents/com~apple~CloudDocs/apple-dev-account/account.txt"
-    SAKSHI_KEYDIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/apple-dev-account/Sakshi"
+    # The app's key folder was renamed Sakshi -> llm-bar; accept either.
+    SAKSHI_KEYDIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/apple-dev-account/llm-bar"
+    [[ -d "${SAKSHI_KEYDIR}" ]] || SAKSHI_KEYDIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/apple-dev-account/Sakshi"
 
     # Auto-detect the Sakshi API key + Issuer ID from the private
     # apple-dev-account folder if not already set via env. ISSUER_ID never

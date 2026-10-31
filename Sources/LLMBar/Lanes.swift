@@ -98,7 +98,13 @@ func loadLaneStatus(path: String? = nil) -> LaneStatusDoc? {
 /// ~/.zshrc sources the config and the keychain loader runs). Ghostty by default;
 /// anything else falls back to Terminal.app via AppleScript.
 func launchLane(_ lane: String) {
-    let command = "\(lane); exec zsh -i"
+    runInTerminal(lane)
+}
+
+/// Runs a shell command in a new terminal window inside an interactive zsh, so functions from
+/// ~/.zshrc (lcp, lanes) resolve, then leaves the shell open.
+func runInTerminal(_ shellCommand: String) {
+    let command = "\(shellCommand); exec zsh -i"
     if TERMINAL_APP.lowercased() == "ghostty",
        NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.mitchellh.ghostty") != nil {
         let p = Process()
